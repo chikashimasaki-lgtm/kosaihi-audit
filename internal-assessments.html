@@ -228,6 +228,11 @@ for(let p=1;p<=15;p++){
   LIBRARY.push(node({id:"ia-p"+p,parent:domId(p),theme:"原則"+p+" "+PRIN[p]+"（基準別）",
     data:GIAS.standards.filter(s=>s.principle===p).map(stdRow)}));
 }
+// 基準レベル（52件）を原則の下の独立ノードとして生成（全体→ドメイン→原則→基準）
+GIAS.standards.forEach(s=>{
+  LIBRARY.push(node({id:"ia-s"+s.no,parent:"ia-p"+s.principle,theme:"基準"+s.no+"　"+s.name,
+    data:[stdRow(s)]}));
+});
 const BYID={}; LIBRARY.forEach(d=>BYID[d.id]=d);
 
 // ===== エンジン =====
