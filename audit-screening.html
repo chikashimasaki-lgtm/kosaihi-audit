@@ -7,7 +7,7 @@
 <style>
   :root{
     --bg:#eef2f6;--panel:#fff;--line:#d7e0e8;--txt:#27313c;--muted:#67768a;
-    --accent:#1f5f9e;--accentd:#15436f;
+    --accent:#cc0000;--accentd:#990000;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:"Meiryo UI","Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
@@ -559,16 +559,16 @@ function downloadConfCsv(){
 }
 function downloadConfExcel(){
   if(!CONFIRMATIONS.length){ alert('疑義案件がありません'); return; }
-  const row=(k,v)=>`<tr><td style="background:#f1f5fa;font-weight:bold;white-space:nowrap">${esc(k)}</td><td>${esc(v)}</td></tr>`;
+  const row=(k,v)=>`<tr><td style="background:#fbeaea;font-weight:bold;white-space:nowrap">${esc(k)}</td><td>${esc(v)}</td></tr>`;
   let t='';
   CONFIRMATIONS.forEach(c=>{
-    t+=`<tr><td colspan="2" style="background:#15436f;color:#fff;font-weight:bold;font-size:12pt">監査内容確認書　${esc(c.theme)}　${esc(c.id)}　［${esc(c.grade)}］</td></tr>`;
+    t+=`<tr><td colspan="2" style="background:#990000;color:#fff;font-weight:bold;font-size:12pt">監査内容確認書　${esc(c.theme)}　${esc(c.id)}　［${esc(c.grade)}］</td></tr>`;
     t+=row('確認書発行日',c.date+' ／ 発行：内部監査部');
     t+=row('監査対象組織',c.org);
     t+=row('対象ID',c.id);
     t+=row('案件内容',c.detail);
     t+=row('総合評価／指摘区分',c.grade+' ／ '+c.flags);
-    t+=`<tr><td colspan="2" style="background:#dde7f0;font-weight:bold">ご確認・ご回答いただきたい事項</td></tr>`;
+    t+=`<tr><td colspan="2" style="background:#f6d9d9;font-weight:bold">ご確認・ご回答いただきたい事項</td></tr>`;
     c.questions.forEach((q,i)=>t+=`<tr><td style="vertical-align:top;width:58%">Q${i+1}. ${esc(q)}</td><td style="height:54px;background:#fffdf2">ご回答：</td></tr>`);
     t+=`<tr><td colspan="2">提示証跡：□ 証憑　□ 承認記録　□ 関連資料</td></tr>`;
     t+=`<tr><td>ご回答期限：　　　年　　月　　日</td><td>ご回答者（所属・氏名）：</td></tr>`;

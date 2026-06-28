@@ -7,7 +7,7 @@
 <style>
   :root{
     --bg:#eef2f6;--panel:#fff;--panel2:#f3f6fa;--line:#d7e0e8;--txt:#27313c;--muted:#67768a;
-    --accent:#1f5f9e;--accentd:#15436f;
+    --accent:#cc0000;--accentd:#990000;
     --ok:#2f9e5f;--note:#2b7fd0;--minor:#e0a000;--major:#d8443b;
   }
   *{box-sizing:border-box;margin:0;padding:0}
@@ -560,10 +560,10 @@ function downloadConfCsv(){
 // 監査内容確認書 Excel（案件ごとの帳票・回答欄つき / HTMLテーブル方式で.xls）
 function downloadConfExcel(){
   if(!CONFIRMATIONS.length){ alert('疑義案件がありません'); return; }
-  const row=(k,v)=>`<tr><td style="background:#f1f5fa;font-weight:bold;white-space:nowrap">${esc(k)}</td><td>${esc(v)}</td></tr>`;
+  const row=(k,v)=>`<tr><td style="background:#fbeaea;font-weight:bold;white-space:nowrap">${esc(k)}</td><td>${esc(v)}</td></tr>`;
   let t='';
   CONFIRMATIONS.forEach(c=>{
-    t+=`<tr><td colspan="2" style="background:#15436f;color:#fff;font-weight:bold;font-size:12pt">監査内容確認書（被監査部門 ご回答用）　${esc(c.id)}　［${esc(c.grade)}］</td></tr>`;
+    t+=`<tr><td colspan="2" style="background:#990000;color:#fff;font-weight:bold;font-size:12pt">監査内容確認書（被監査部門 ご回答用）　${esc(c.id)}　［${esc(c.grade)}］</td></tr>`;
     t+=row('確認書発行日',c.date+' ／ 発行：内部監査部');
     t+=row('被監査部門','');
     t+=row('関連決裁番号',c.rel);
@@ -574,7 +574,7 @@ function downloadConfExcel(){
     t+=row('監査人所見（税務）',c.calc);
     t+=row('監査人所見（決裁）',c.proc);
     t+=row('監査人所見（相手方）',c.fraud);
-    t+=`<tr><td colspan="2" style="background:#dde7f0;font-weight:bold">ご確認・ご回答いただきたい事項（被監査部門ご記入）</td></tr>`;
+    t+=`<tr><td colspan="2" style="background:#f6d9d9;font-weight:bold">ご確認・ご回答いただきたい事項（被監査部門ご記入）</td></tr>`;
     c.questions.forEach((q,i)=>{
       t+=`<tr><td style="vertical-align:top;width:58%">Q${i+1}. ${esc(q)}</td><td style="height:54px;background:#fffdf2">ご回答：</td></tr>`;
     });

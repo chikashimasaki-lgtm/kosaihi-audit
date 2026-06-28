@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Internal Assessments（内部監査 品質の内部評価）</title>
 <style>
-  :root{ --bg:#eef2f6;--panel:#fff;--line:#d7e0e8;--txt:#27313c;--muted:#67768a;--accent:#1f5f9e;--accentd:#15436f; }
+  :root{ --bg:#eef2f6;--panel:#fff;--line:#d7e0e8;--txt:#27313c;--muted:#67768a;--accent:#cc0000;--accentd:#990000; }
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:"Meiryo UI","Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;background:var(--bg);color:var(--txt);line-height:1.55;padding:16px;font-size:14px}
   .wrap{max-width:1100px;margin:0 auto}
@@ -443,7 +443,7 @@ function render(){
   dispCols.forEach(c=>h+=`<th>${esc(c)}</th>`); h+=`<th>指摘（適合以外の根拠）</th></tr></thead><tbody>`;
   let lastG=null;
   RESULTS.forEach(a=>{ const gi=levels.indexOf(a.grade);
-    if(hasGroup){ const g=a.row[GROUP]||''; if(g!==lastG){ lastG=g; h+=`<tr><td colspan="${span}" style="background:#e7eff8;font-weight:700;color:var(--accentd)">▸ ${esc(g)}</td></tr>`; } }
+    if(hasGroup){ const g=a.row[GROUP]||''; if(g!==lastG){ lastG=g; h+=`<tr><td colspan="${span}" style="background:#fbeaea;font-weight:700;color:var(--accentd)">▸ ${esc(g)}</td></tr>`; } }
     h+=`<tr style="background:${lightFor(gi,total)}"><td>${esc(a.row[idCol])}</td><td><span class="badge" style="background:${colorFor(gi,total)}">${esc(a.grade)}</span></td>`;
     dispCols.forEach(c=>h+=`<td>${esc(a.row[c])}</td>`);
     h+=`<td>${a.flags.length?`<span class="flags">${a.flags.map(esc).join('、')}</span>`:'<span style="color:#2f9e5f">✔ 適合</span>'}${a.childId?` <button class="mini" onclick="loadRuleset('${a.childId}')">▶ 下層を開く</button>`:''}</td></tr>`;
@@ -500,11 +500,11 @@ function downloadConfCsv(){ if(!CONFIRMATIONS.length){ alert('指摘事項があ
   const csv='﻿'+[head,...rows].map(r=>r.map(x=>`"${String(x==null?'':x).replace(/"/g,'""')}"`).join(',')).join('\r\n');
   dl(new Blob([csv],{type:'text/csv'}),'内部評価_是正確認書.csv'); }
 function downloadConfExcel(){ if(!CONFIRMATIONS.length){ alert('指摘事項がありません'); return; }
-  const row=(k,v)=>`<tr><td style="background:#f1f5fa;font-weight:bold;white-space:nowrap">${esc(k)}</td><td>${esc(v)}</td></tr>`; let t='';
-  CONFIRMATIONS.forEach(c=>{ t+=`<tr><td colspan="2" style="background:#15436f;color:#fff;font-weight:bold;font-size:12pt">内部評価 是正確認書　${esc(c.theme)}　${esc(c.id)}　［${esc(c.grade)}］</td></tr>`;
+  const row=(k,v)=>`<tr><td style="background:#fbeaea;font-weight:bold;white-space:nowrap">${esc(k)}</td><td>${esc(v)}</td></tr>`; let t='';
+  CONFIRMATIONS.forEach(c=>{ t+=`<tr><td colspan="2" style="background:#990000;color:#fff;font-weight:bold;font-size:12pt">内部評価 是正確認書　${esc(c.theme)}　${esc(c.id)}　［${esc(c.grade)}］</td></tr>`;
     t+=row('発行日',c.date+' ／ 発行：品質評価担当'); t+=row('評価対象',c.org); t+=row('対象番号',c.id); t+=row('項目内容',c.detail);
     t+=row('達成度／指摘区分',c.grade+' ／ '+c.flags);
-    t+=`<tr><td colspan="2" style="background:#dde7f0;font-weight:bold">ご確認・ご回答いただきたい事項</td></tr>`;
+    t+=`<tr><td colspan="2" style="background:#f6d9d9;font-weight:bold">ご確認・ご回答いただきたい事項</td></tr>`;
     c.questions.forEach((q,i)=>t+=`<tr><td style="vertical-align:top;width:58%">Q${i+1}. ${esc(q)}</td><td style="height:54px;background:#fffdf2">ご回答：</td></tr>`);
     t+=`<tr><td colspan="2">提示証拠：□ 基本規程/負託　□ 監査計画/調書　□ 自己評価/QAIP　□ 報告書/改善措置</td></tr>`;
     t+=`<tr><td>ご回答期限：　　　年　　月　　日</td><td>ご回答者（所属・氏名）：</td></tr>`;
