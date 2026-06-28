@@ -216,13 +216,15 @@ const DOMI=["ドメインⅠ","Ⅰ 内部監査の目的","内部監査の目的
 const PR=[]; for(let p=1;p<=15;p++) PR.push(prinRow(p));
 const ALL=[DOMI].concat(PR);
 function domId(p){ return p<=5?"ia-d2":(p<=8?"ia-d3":(p<=12?"ia-d4":"ia-d5")); }
+// ドメイン配下の全基準を原則順に並べる（区分列＝原則でグルーピング表示）
+function domStdRows(a,b){ const r=[]; for(let p=a;p<=b;p++) GIAS.standards.filter(s=>s.principle===p).forEach(s=>r.push(stdRow(s))); return r; }
 const LIBRARY=[
   node({id:"ia-all",parent:null,theme:"内部監査 品質の内部評価（グローバル内部監査基準・全体）",data:ALL}),
   node({id:"ia-d1",parent:"ia-all",theme:"ドメインⅠ 内部監査の目的",data:[DOMI]}),
-  node({id:"ia-d2",parent:"ia-all",theme:"ドメインⅡ 倫理と専門職としての気質（原則1-5）",data:PR.slice(0,5)}),
-  node({id:"ia-d3",parent:"ia-all",theme:"ドメインⅢ 内部監査部門に対するガバナンス（原則6-8）",data:PR.slice(5,8)}),
-  node({id:"ia-d4",parent:"ia-all",theme:"ドメインⅣ 内部監査部門の管理（原則9-12）",data:PR.slice(8,12)}),
-  node({id:"ia-d5",parent:"ia-all",theme:"ドメインⅤ 内部監査業務の実施（原則13-15）",data:PR.slice(12,15)})
+  node({id:"ia-d2",parent:"ia-all",theme:"ドメインⅡ 倫理と専門職としての気質（原則1-5・基準別）",data:domStdRows(1,5)}),
+  node({id:"ia-d3",parent:"ia-all",theme:"ドメインⅢ 内部監査部門に対するガバナンス（原則6-8・基準別）",data:domStdRows(6,8)}),
+  node({id:"ia-d4",parent:"ia-all",theme:"ドメインⅣ 内部監査部門の管理（原則9-12・基準別）",data:domStdRows(9,12)}),
+  node({id:"ia-d5",parent:"ia-all",theme:"ドメインⅤ 内部監査業務の実施（原則13-15・基準別）",data:domStdRows(12+1,15)})
 ];
 for(let p=1;p<=15;p++){
   LIBRARY.push(node({id:"ia-p"+p,parent:domId(p),theme:"原則"+p+" "+PRIN[p]+"（基準別）",
