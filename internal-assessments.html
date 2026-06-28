@@ -373,10 +373,16 @@ function render(){
     h+=`</tbody></table></div><div class="note-s">※ 親の達成度は子階層の最も低い達成度で集約。各子は自身のデータで評価。</div></div>`;
   }
 
-  const idCol=CTX.cols[0]; const dispCols=CTX.display.filter(c=>c!==idCol);
+  const idCol=CTX.cols[0];
+  const GROUP='区分';   // 区分（原則／ドメイン）で見出しグルーピング
+  const hasGroup=CTX.cols.includes(GROUP)&&CTX.display.includes(GROUP);
+  const dispCols=CTX.display.filter(c=>c!==idCol&&(!hasGroup||c!==GROUP));
+  const span=2+dispCols.length+1;
   h+=`<div class="card"><h2>📋 適合性判定一覧</h2><div class="tablewrap"><table><thead><tr><th>${esc(idCol)}</th><th>達成度</th>`;
   dispCols.forEach(c=>h+=`<th>${esc(c)}</th>`); h+=`<th>指摘（適合以外の根拠）</th></tr></thead><tbody>`;
+  let lastG=null;
   RESULTS.forEach(a=>{ const gi=levels.indexOf(a.grade);
+    if(hasGroup){ const g=a.row[GROUP]||''; if(g!==lastG){ lastG=g; h+=`<tr><td colspan="${span}" style="background:#e7eff8;font-weight:700;color:var(--accentd)">▸ ${esc(g)}</td></tr>`; } }
     h+=`<tr style="background:${lightFor(gi,total)}"><td>${esc(a.row[idCol])}</td><td><span class="badge" style="background:${colorFor(gi,total)}">${esc(a.grade)}</span></td>`;
     dispCols.forEach(c=>h+=`<td>${esc(a.row[c])}</td>`);
     h+=`<td>${a.flags.length?`<span class="flags">${a.flags.map(esc).join('、')}</span>`:'<span style="color:#2f9e5f">✔ 適合</span>'}${a.childId?` <button class="mini" onclick="loadRuleset('${a.childId}')">▶ 下層を開く</button>`:''}</td></tr>`;
