@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>会議費・交際費 監査スクリーニング</title>
+<style>
+  :root{
+    --bg:#eef2f6;--panel:#fff;--panel2:#f3f6fa;--line:#d7e0e8;--txt:#27313c;--muted:#67768a;
+    --accent:#1f5f9e;--accentd:#15436f;
+    --ok:#2f9e5f;--note:#2b7fd0;--minor:#e0a000;--major:#d8443b;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
+    background:var(--bg);color:var(--txt);line-height:1.55;padding:16px;font-size:14px}
+  .wrap{max-width:1100px;margin:0 auto}
+  header{background:linear-gradient(135deg,var(--accent),var(--accentd));color:#fff;
+    border-radius:12px;padding:16px 20px;border-bottom:3px solid #c8102e;box-shadow:0 2px 8px rgba(20,60,100,.2)}
+  header h1{font-size:1.2rem}
+  header p{font-size:.78rem;opacity:.9;margin-top:3px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;
+    margin-top:12px;box-shadow:0 1px 3px rgba(20,50,80,.05)}
+  .card h2{font-size:.95rem;color:var(--accentd);margin-bottom:8px;display:flex;align-items:center;gap:8px}
+  .cfg{display:flex;flex-wrap:wrap;gap:14px;align-items:center;font-size:.82rem}
+  .cfg label{display:flex;align-items:center;gap:6px}
+  .cfg input{width:64px;padding:5px 7px;border:1px solid var(--line);border-radius:6px;font-size:.85rem}
+  textarea{width:100%;height:120px;border:1px solid var(--line);border-radius:8px;padding:10px;
+    font-family:ui-monospace,monospace;font-size:.78rem;resize:vertical;white-space:pre}
+  .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  button{cursor:pointer;border:1px solid var(--line);border-radius:8px;padding:8px 14px;font-size:.85rem;
+    background:#fff;color:var(--txt);font-weight:600}
+  button:hover{border-color:var(--accent);color:var(--accent)}
+  button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  button.primary:hover{background:var(--accentd);color:#fff}
+  .note-s{font-size:.74rem;color:var(--muted);margin-top:6px}
+  .dash{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}
+  .kpi{border-radius:9px;padding:10px;text-align:center;color:#fff}
+  .kpi .n{font-size:1.5rem;font-weight:800;line-height:1.1}
+  .kpi .l{font-size:.72rem;opacity:.95}
+  .kpi.ok{background:var(--ok)}.kpi.note{background:var(--note)}.kpi.minor{background:var(--minor)}
+  .kpi.major{background:var(--major)}.kpi.total{background:#54657a}
+  table{width:100%;border-collapse:collapse;font-size:.78rem;margin-top:4px}
+  th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+  th{background:var(--accentd);color:#fff;position:sticky;top:0;white-space:nowrap}
+  tr.major{background:#fdecea}tr.minor{background:#fdf6e3}tr.note{background:#eaf3fc}
+  .tablewrap{overflow:auto;max-height:420px;border-radius:8px;border:1px solid var(--line)}
+  .badge{display:inline-block;padding:2px 8px;border-radius:11px;font-size:.72rem;font-weight:700;color:#fff;white-space:nowrap}
+  .b-ok{background:var(--ok)}.b-note{background:var(--note)}.b-minor{background:var(--minor)}.b-major{background:var(--major)}
+  .flags{font-size:.72rem;color:var(--major)}
+  .conf{border:1px solid var(--line);border-left:4px solid var(--major);border-radius:8px;
+    padding:12px 14px;margin-top:10px;background:#fff;font-size:.82rem;white-space:pre-wrap}
+  .conf.note{border-left-color:var(--note)}.conf.minor{border-left-color:var(--minor)}
+  .conf .ch{font-weight:700;color:var(--accentd);font-size:.9rem;margin-bottom:6px}
+  details{margin-top:12px}
+  summary{cursor:pointer;font-weight:700;color:var(--accentd);font-size:.9rem}
+  pre.prompt{background:#0d1b2a;color:#cfe3ff;border-radius:8px;padding:12px;font-size:.72rem;
+    overflow:auto;max-height:360px;white-space:pre-wrap;margin-top:8px}
+  footer{color:var(--muted);font-size:.72rem;text-align:center;margin-top:16px}
+  .legend{font-size:.72rem;color:var(--muted);margin-top:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🛡️ 会議費・交際費 日常チェック統合型 監査スクリーニング</h1>
+    <p>インボイス経過措置（税抜計算）・1万円基準・事前/事後決裁・過剰接待/相手方偽装リスクを自動判定 → 疑義のみ監査内容確認書を出力</p>
+  </header>
+
+  <div class="card">
+    <h2>⚙️ 判定条件</h2>
+    <div class="cfg">
+      <label>1人あたり基準(円) <input id="cfgThreshold" type="number" value="10000"></label>
+      <label>経過措置 控除不可率(%) <input id="cfgNonDeduct" type="number" value="20"></label>
+      <label>決裁遅延 猶予(日) <input id="cfgGrace" type="number" value="10"></label>
+      <label>消費税率(%) <input id="cfgTax" type="number" value="10"></label>
+    </div>
+    <div class="legend">経理方式＝税抜経理固定。未登録店は「本体価格＋消費税×控除不可率」を監査用税抜価額とする（2026年＝20%控除不可）。</div>
+  </div>
+
+  <div class="card">
+    <h2>📥 入力データ（タブ／カンマ区切り・1行1申請）</h2>
+    <div class="note-s">列順: 精算申請ID, 関連決裁番号, 支出日, 事前承認日, 精算決裁日, 金額税込, 人数, 社外人数, インボイス(登録/未登録), 店舗, 申請科目, 社内最上位役職, 社外最上位役職, 事後決裁理由</div>
+    <textarea id="input" spellcheck="false"></textarea>
+    <div class="btns">
+      <button class="primary" onclick="runAudit()">🔍 監査実行</button>
+      <button onclick="loadSample()">📋 サンプルデータ投入</button>
+      <button onclick="document.getElementById('input').value=''">クリア</button>
+      <button onclick="downloadCsv()">⬇ 結果CSV</button>
+    </div>
+  </div>
+
+  <div id="out"></div>
+
+  <details>
+    <summary>📝 STEP3 定性判定用 AIプロンプト（Copilot / Gemini 用・コピー可）</summary>
+    <button onclick="copyPrompt()" style="margin-top:8px">📋 プロンプトをコピー</button>
+    <pre class="prompt" id="promptBox"></pre>
+  </details>
+
+  <footer>本ツールは一次スクリーニング用。最終判定・税務処理は専門家・原資料で確認してください。機械判定（税抜計算・日付・1万円）は確定値、隠蔽/偽装は「疑義の示唆」です。</footer>
+</div>
+
+<script>
+// ===== サンプルデータ（全評価パターン網羅）=====
+const SAMPLE = [
+ // ID, 関連決裁, 支出日, 事前承認日, 精算決裁日, 税込, 人数, 社外人数, インボイス, 店舗, 申請科目, 社内役職, 社外役職, 事後理由
+ ["EXP-2026-0100","ADV-2026-0090","2026-06-08","2026-06-05","2026-06-10",59500,4,2,"登録","ルノアール会議室","会議費","部長","担当者",""],
+ ["EXP-2026-0045","ADV-2026-0044","2026-06-12","2026-06-10","2026-06-15",44000,4,2,"未登録","和食さと","会議費","課長","担当者",""],
+ ["EXP-2026-0078","ADV-2026-0070","2026-06-10","2026-06-12","2026-06-14",34000,4,2,"登録","居酒屋 とり鉄","会議費","課長","担当者",""],
+ ["EXP-2026-0079","ADV-2026-0071","2026-06-10","2026-06-12","2026-06-14",34000,4,2,"登録","ガスト","会議費","課長","担当者","急な顧客対応で事前申請の猶予がなかった"],
+ ["EXP-2026-0501","","2026-06-10","","2026-06-25",39600,4,2,"登録","銀座 久兵衛(会員制)","会議費","役員","担当者",""],
+ ["EXP-2026-0250","ADV-2026-0240","2026-06-15","2026-06-12","2026-06-18",48000,6,0,"登録","社員食堂ケータリング","会議費","部長","",""],
+ ["EXP-2026-0320","ADV-2026-0310","2026-06-20","2026-06-18","2026-06-22",80000,8,2,"登録","新年会 宴会場","福利厚生費","部長","担当者",""],
+ ["EXP-2026-0410","ADV-2026-0390","2026-06-25","2026-06-26","2026-07-05",42000,4,2,"未登録","割烹 みつ田","会議費","本部長","担当者","多忙のため申請が漏れた"],
+];
+const COLS=["精算申請ID","関連決裁番号","支出日","事前承認日","精算決裁日","金額税込","人数","社外人数","インボイス","店舗","申請科目","社内役職","社外役職","事後理由"];
+
+const LUXE = ['割烹','料亭','会員制','クラブ','ステーキ','鮨','寿司','銀座','久兵衛','高級','フレンチ','鉄板'];
+const SENIOR = ['役員','社長','会長','専務','常務','執行','本部長','部長'];
+const JUNIOR = ['担当','社員','主任','係'];
+
+function loadSample(){
+  document.getElementById('input').value = SAMPLE.map(r=>r.join('\t')).join('\n');
+}
+
+function parseInput(){
+  const lines = document.getElementById('input').value.trim().split('\n').filter(l=>l.trim());
+  return lines.map(l=>{
+    const c = l.includes('\t') ? l.split('\t') : l.split(',');
+    const o={}; COLS.forEach((k,i)=>o[k]=(c[i]||'').trim()); return o;
+  });
+}
+
+function days(a,b){ return Math.round((new Date(a)-new Date(b))/86400000); }
+function yen(n){ return Math.round(n).toLocaleString(); }
+
+function audit(r,cfg){
+  const tax=cfg.tax/100, nd=cfg.nonDeduct/100;
+  const gross=+r['金額税込']||0, ppl=+r['人数']||1, ext=+r['社外人数']||0;
+  const registered = !r['インボイス'].includes('未');
+  // 監査用税抜価額
+  const body = Math.round(gross/(1+tax));        // 本体価格
+  const vat  = gross - body;                      // 消費税額
+  const taxExcl = registered ? body : (body + Math.round(vat*nd));
+  const per = taxExcl/ppl;
+  const internalOnly = ext===0;
+  // 科目判定
+  let judged = internalOnly ? '交際費' : (per>cfg.threshold ? '交際費' : '会議費');
+  const applied = r['申請科目']||'会議費';
+  const flags=[];
+  if(applied==='会議費' && judged==='交際費')
+    flags.push(internalOnly?'社内飲食費を会議費計上':'1万円超(隠れ交際費)');
+  if(applied==='福利厚生費' && ext>0) { judged='交際費'; flags.push('社外混入の福利厚生費(実態交際費)'); }
+  // 決裁
+  const noPrior = !r['関連決裁番号'];
+  const afterFact = r['事前承認日'] && r['支出日'] && days(r['事前承認日'],r['支出日'])>0;
+  if(noPrior) flags.push('事前申請なし');
+  else if(afterFact) flags.push('事後決裁'+(r['事後理由']?'(理由あり)':'(理由なし)'));
+  let delay=null;
+  if(r['精算決裁日']&&r['支出日']){ delay=days(r['精算決裁日'],r['支出日']); if(delay>cfg.grace) flags.push('決裁遅延('+delay+'日)'); }
+  // STEP2 不祥事シナリオ
+  const luxe = LUXE.some(k=>r['店舗'].includes(k));
+  const seniorIn = SENIOR.some(k=>r['社内役職'].includes(k));
+  const juniorOut = r['社外役職'] && JUNIOR.some(k=>r['社外役職'].includes(k));
+  const roleMismatch = seniorIn && juniorOut;
+  if(luxe && roleMismatch) flags.push('相手方偽装疑い(高級店×役職不整合)');
+  const hidden = luxe && (noPrior||afterFact);
+  if(hidden) flags.push('隠蔽目的の事前申請回避(高級店×事前申請なし)');
+  // 格付け
+  let grade;
+  if((luxe&&roleMismatch)||hidden) grade='要改善';
+  else if(flags.some(f=>/隠れ交際費|社内飲食費|福利厚生費|決裁遅延|事後決裁\(理由なし\)|事前申請なし/.test(f))) grade='要改善(軽微)';
+  else if(flags.some(f=>/事後決裁\(理由あり\)/.test(f))) grade='注意';
+  else grade='適正';
+  const tax_treat = judged==='交際費' ? '交際費等（損金不算入）' : '損金算入可能（交際費除外）';
+  return {r,gross,ppl,ext,registered,body,vat,taxExcl,per,judged,applied,delay,flags,grade,tax_treat,luxe,roleMismatch};
+}
+
+const GMAP={'適正':'ok','注意':'note','要改善(軽微)':'minor','要改善':'major'};
+let RESULTS=[];
+
+function runAudit(){
+  const cfg={threshold:+cfgThreshold.value,nonDeduct:+cfgNonDeduct.value,grace:+cfgGrace.value,tax:+cfgTax.value};
+  const rows=parseInput();
+  if(!rows.length){ out.innerHTML='<div class="card">データがありません。「サンプルデータ投入」を押すか入力してください。</div>'; return; }
+  RESULTS=rows.map(r=>audit(r,cfg));
+  render(cfg);
+}
+
+function render(cfg){
+  const cnt={適正:0,注意:0,'要改善(軽微)':0,要改善:0};
+  RESULTS.forEach(a=>cnt[a.grade]++);
+  let h=`<div class="card"><h2>📊 監査結果サマリー（${RESULTS.length}件）</h2><div class="dash">
+    <div class="kpi total"><div class="n">${RESULTS.length}</div><div class="l">総件数</div></div>
+    <div class="kpi ok"><div class="n">${cnt['適正']}</div><div class="l">🟩 適正</div></div>
+    <div class="kpi note"><div class="n">${cnt['注意']}</div><div class="l">🟦 注意</div></div>
+    <div class="kpi minor"><div class="n">${cnt['要改善(軽微)']}</div><div class="l">🟨 要改善(軽微)</div></div>
+    <div class="kpi major"><div class="n">${cnt['要改善']}</div><div class="l">🟥 要改善</div></div>
+  </div></div>`;
+
+  // テーブル
+  h+=`<div class="card"><h2>📋 判定一覧</h2><div class="tablewrap"><table><thead><tr>
+    <th>ID</th><th>評価</th><th>店舗</th><th>税込</th><th>監査用税抜</th><th>1人あたり</th>
+    <th>申請→判定科目</th><th>検知フラグ</th></tr></thead><tbody>`;
+  RESULTS.forEach(a=>{
+    const cls=GMAP[a.grade];
+    h+=`<tr class="${cls}"><td>${a.r['精算申請ID']}</td>
+      <td><span class="badge b-${cls}">${a.grade}</span></td>
+      <td>${a.r['店舗']}${a.luxe?' ⚠高級店':''}</td>
+      <td style="text-align:right">${yen(a.gross)}</td>
+      <td style="text-align:right">${yen(a.taxExcl)}${a.registered?'':' <span style="color:#d8443b">*経過措置</span>'}</td>
+      <td style="text-align:right;font-weight:700">${yen(a.per)}</td>
+      <td>${a.applied}→${a.judged}${a.applied!==a.judged?' ⚠':''}</td>
+      <td class="flags">${a.flags.join('、')||'—'}</td></tr>`;
+  });
+  h+=`</tbody></table></div></div>`;
+
+  // 監査内容確認書（疑義のみ）
+  const flagged=RESULTS.filter(a=>a.grade!=='適正');
+  h+=`<div class="card"><h2>🧾 監査内容確認書（疑義 ${flagged.length}件・適正は自動スルー）</h2>`;
+  if(!flagged.length) h+='<div class="note-s">疑義案件はありません。全件適正です。</div>';
+  const today=new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Tokyo'});
+  flagged.forEach(a=>{
+    const cls=GMAP[a.grade];
+    const r=a.r;
+    const calc=`${a.registered?'登録店':'未登録店'}: 本体${yen(a.body)}円 + 消費税${yen(a.vat)}円`+
+      (a.registered?'':`×控除不可${cfg.nonDeduct}% = 上乗せ${yen(Math.round(a.vat*cfg.nonDeduct/100))}円`)+
+      ` → 監査用税抜${yen(a.taxExcl)}円 ÷ ${a.ppl}名 = 1人あたり${yen(a.per)}円`;
+    const proc = !r['関連決裁番号'] ? '関連決裁番号なし＝事前申請をスキップ' :
+      (r['事前承認日']&&days(r['事前承認日'],r['支出日'])>0 ? `事前承認(${r['事前承認日']})が支出日(${r['支出日']})より後＝事後決裁` : `事前承認(${r['事前承認日']}) ≦ 支出日(${r['支出日']})＝事前承認あり`)+
+      (a.delay!=null?` / 精算決裁まで${a.delay}日`:'');
+    const fraud = (a.luxe&&a.roleMismatch) ? `高級店利用かつ社内[${r['社内役職']}]×社外[${r['社外役職']}]の役職不整合。実際の参加者（要職者・利害関係者等）隠蔽の疑い（過剰接待・相手方偽装リスク）` :
+      (a.luxe?'高級店利用。事前申請回避との組合せに留意':'高級店利用・役職不整合の兆候は認められない');
+    const action = [];
+    if(a.applied!==a.judged) action.push(`勘定科目を「${a.judged}」へ変更のうえ再申請`);
+    if(a.flags.some(f=>/事前申請なし|事後決裁/.test(f))) action.push('事前申請をスキップ／事後決裁とした妥当な理由書の提出を要求');
+    if(a.luxe&&a.roleMismatch) action.push('実際の社外参加者に要職者・特定利害関係者が含まれないか事実関係を確認（監査委員会・総務へ通知）');
+    if(a.flags.some(f=>/決裁遅延/.test(f))) action.push('決裁遅延について起案者・決裁者へ是正アラート');
+    h+=`<div class="conf ${cls}"><div class="ch">【内部監査・日常チェック 監査内容確認書】</div>`+
+`■ 1. 対象案件
+  確認書発行日：${today}
+  対象精算申請ID：${r['精算申請ID']}
+  関連決裁番号：${r['関連決裁番号']||'（事前申請なし）'}
+  申請時勘定科目：${a.applied} ／ 利用店舗：${r['店舗']}
+  支払金額（税込）：${yen(a.gross)}円 ／ 参加${a.ppl}名（社外${a.ext}名）
+
+■ 2. 監査検知（疑義の要約）
+  総合評価：${a.grade}
+  指摘区分：${a.flags.join('、')}
+  税務上の扱い：${a.tax_treat}（推奨科目：${a.judged}）
+
+■ 3. 検証の詳細
+  【税務・会計】${calc}（基準${yen(cfg.threshold)}円 → ${a.per>cfg.threshold?'超過':'以下'}）
+  【決裁プロセス】${proc}
+  【不祥事・隠蔽リスク】${fraud}
+  【定性評価】${r['事後理由']?'事後理由「'+r['事後理由']+'」の合理性はAI/担当者が最終評価':'事後理由の記載なし'}
+
+■ 4. 確認事項・是正指示
+  ${action.length?action.map((x,i)=>(i+1)+'. '+x).join('\n  '):'— 個別確認のうえ対応'}</div>`;
+  });
+  h+=`</div>`;
+  out.innerHTML=h;
+}
+
+function downloadCsv(){
+  if(!RESULTS.length){ alert('先に監査を実行してください'); return; }
+  const head=['精算申請ID','総合評価','店舗','税込','監査用税抜','1人あたり','申請科目','判定科目','税務取扱','検知フラグ'];
+  const rows=RESULTS.map(a=>[a.r['精算申請ID'],a.grade,a.r['店舗'],a.gross,a.taxExcl,Math.round(a.per),
+    a.applied,a.judged,a.tax_treat,a.flags.join('；')]);
+  const csv='﻿'+[head,...rows].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv'});const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);a.download='kosaihi_audit_results.csv';a.click();
+}
+
+const PROMPT=`# 役割
+あなたは企業の内部監査・税務監査を支援するエキスパートAI監査アシスタントです。
+「支払精算メインテーブル」「参加者明細テーブル」を、国税庁指針（交際費1万円基準・損金不算入）、インボイス経過措置（2026年=控除不可20%を本体に上乗せした税抜価額で判定）、社内の接遇関連規程・職務権限規程に基づき監査してください。
+
+# STEP1 機械的チェック（税抜経理）
+- 未登録店: 監査用税抜価額 = 本体価格 + 消費税×20%。1人あたり = 税抜価額÷人数。
+- 1人あたり10,000円以下＝会議費可、超＝全額交際費。社外0名（社内飲食）は金額不問で交際費。
+- 事前承認日 > 支出日、または関連決裁番号なし → 事後決裁。精算決裁−支出日が猶予超 → 決裁遅延。
+
+# STEP2 不祥事シナリオ（過剰接待・相手方偽装）
+- 1万円以下でも、高級店（割烹/料亭/会員制/高級ステーキ等）×自社[役員]×社外[一般担当] → 要職者・利害関係者の隠蔽を疑う。
+- 高級店/高額で関連決裁番号が空 → 隠蔽目的の事前申請回避とみなし高リスク。
+
+# STEP3 定性
+- 事後決裁理由を読み、怠慢（忘れた等）か不可抗力（急な顧客対応等）か評価。
+
+# 指摘レベル
+🟥要改善: 接遇規程違反相手との会食/ゴルフ、または隠蔽・偽装の強い兆候、組織的統制不十分。
+🟨要改善(軽微): 勘定科目誤り/隠れ交際費、決裁者誤り、事後決裁(理由なし)、決裁遅延。
+🟦注意: 違反断定不可だが将来リスク（事後決裁だが理由に一定の合理性 等）。
+🟩適正: 税法・インボイス・事前決裁・接遇規程すべてクリア。
+
+# 出力（条件付き）
+🟩適正は「ID：適正」とだけ1行出力。🟦🟨🟥は1案件ごとに【監査内容確認書】形式（対象案件 / 監査検知 / 検証詳細(税務計算・プロセス・隠蔽リスク・定性) / 確認事項・是正指示）で出力すること。`;
+document.getElementById('promptBox').textContent=PROMPT;
+function copyPrompt(){ navigator.clipboard.writeText(PROMPT).then(()=>alert('プロンプトをコピーしました')); }
+
+loadSample();
+</script>
+</body>
+</html>
