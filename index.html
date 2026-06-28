@@ -367,11 +367,21 @@ function audit(r,cfg){
   else if(flags.some(f=>/事後決裁\(理由あり\)/.test(f))) grade='注意';
   else grade='適正';
   const tax_treat = judged==='交際費' ? '交際費等（損金不算入）' : '損金算入可能（交際費除外）';
-  return {r,gross,ppl,ext,registered,body,vat,taxExcl,per,judged,applied,delay,flags,grade,tax_treat,luxe,roleMismatch};
+  // 適正の根拠（簡潔）
+  let basis='';
+  if(grade==='適正'){
+    const p=[registered?'登録店':'未登録店'];
+    if(applied==='福利厚生費'&&internalOnly) p.push('社内慰安(社外なし)');
+    else p.push('1人'+yen(per)+'円≦基準'+(ext>0?'(社外含む)':''));
+    p.push('事前決裁あり'); p.push('遅延なし'); p.push('科目一致');
+    basis=p.join('・');
+  }
+  return {r,gross,ppl,ext,registered,body,vat,taxExcl,per,judged,applied,delay,flags,grade,tax_treat,luxe,roleMismatch,basis};
 }
 
 const GMAP={'適正':'ok','注意':'note','要改善(軽微)':'minor','要改善':'major'};
 let RESULTS=[];
+let CONFIRMATIONS=[];   // 監査内容確認書のエクスポート用データ
 
 function runAudit(){
   const cfg={threshold:+cfgThreshold.value,nonDeduct:+cfgNonDeduct.value,grace:+cfgGrace.value,tax:+cfgTax.value};
@@ -395,7 +405,7 @@ function render(cfg){
   // テーブル
   h+=`<div class="card"><h2>📋 判定一覧</h2><div class="tablewrap"><table><thead><tr>
     <th>ID</th><th>評価</th><th>店舗</th><th>税込</th><th>監査用税抜</th><th>1人あたり</th>
-    <th>申請→判定科目</th><th>検知フラグ</th></tr></thead><tbody>`;
+    <th>申請→判定科目</th><th>検知フラグ／適正根拠</th></tr></thead><tbody>`;
   RESULTS.forEach(a=>{
     const cls=GMAP[a.grade];
     h+=`<tr class="${cls}"><td>${a.r['精算申請ID']}</td>
@@ -405,15 +415,17 @@ function render(cfg){
       <td style="text-align:right">${yen(a.taxExcl)}${a.registered?'':' <span style="color:#d8443b">*経過措置</span>'}</td>
       <td style="text-align:right;font-weight:700">${yen(a.per)}</td>
       <td>${a.applied}→${a.judged}${a.applied!==a.judged?' ⚠':''}</td>
-      <td class="flags">${a.flags.join('、')||'—'}</td></tr>`;
+      <td>${a.flags.length?`<span class="flags">${a.flags.join('、')}</span>`:`<span style="color:#2f9e5f">✔ ${a.basis||'適正'}</span>`}</td></tr>`;
   });
   h+=`</tbody></table></div></div>`;
 
   // 監査内容確認書（疑義のみ）
   const flagged=RESULTS.filter(a=>a.grade!=='適正');
   h+=`<div class="card"><h2>🧾 監査内容確認書（疑義 ${flagged.length}件・適正は自動スルー）</h2>`;
+  if(flagged.length) h+=`<div class="btns"><button onclick="downloadConfCsv()">⬇ 確認書CSV</button><button onclick="downloadConfExcel()">⬇ 確認書Excel</button></div>`;
   if(!flagged.length) h+='<div class="note-s">疑義案件はありません。全件適正です。</div>';
   const today=new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Tokyo'});
+  CONFIRMATIONS=[];
   flagged.forEach(a=>{
     const cls=GMAP[a.grade];
     const r=a.r;
@@ -442,6 +454,10 @@ function render(cfg){
     if(!q.length)
       q.push('本案件の支出目的・参加者・経緯について、補足の説明をご回答ください。');
     const ANS='\n      ご回答：______________________________________________';
+    CONFIRMATIONS.push({date:today,id:r['精算申請ID'],rel:r['関連決裁番号']||'（事前申請なし）',
+      grade:a.grade,flags:a.flags.join('、'),applied:a.applied,judged:a.judged,store:r['店舗'],
+      gross:a.gross,ppl:a.ppl,ext:a.ext,per:Math.round(a.per),taxTreat:a.tax_treat,
+      calc,proc,fraud,questions:q.slice()});
     h+=`<div class="conf ${cls}"><div class="ch">【監査内容確認書（被監査部門 ご回答用）】</div>`+
 `■ 1. 対象案件
   確認書発行日：${today}　／　発行：内部監査部
@@ -476,8 +492,52 @@ function downloadCsv(){
   const rows=RESULTS.map(a=>[a.r['精算申請ID'],a.grade,a.r['店舗'],a.gross,a.taxExcl,Math.round(a.per),
     a.applied,a.judged,a.tax_treat,a.flags.join('；')]);
   const csv='﻿'+[head,...rows].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const blob=new Blob([csv],{type:'text/csv'});const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);a.download='kosaihi_audit_results.csv';a.click();
+  dl(new Blob([csv],{type:'text/csv'}),'kosaihi_audit_results.csv');
+}
+
+function dl(blob,name){ const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click(); }
+const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+// 監査内容確認書 CSV（質問1問=1行・回答欄つき）
+function downloadConfCsv(){
+  if(!CONFIRMATIONS.length){ alert('疑義案件がありません'); return; }
+  const head=['確認書発行日','精算申請ID','被監査部門','総合評価','指摘区分','利用店舗','金額税込','1人あたり税抜','税務上の扱い','質問No','質問内容','ご回答','回答期限','ご回答者','提示証跡'];
+  const ev='□領収書/インボイス □参加者名簿 □実施伺い □議題・議事録 □事後決裁理由書';
+  const rows=[];
+  CONFIRMATIONS.forEach(c=>c.questions.forEach((q,i)=>{
+    rows.push([c.date,c.id,'',c.grade,c.flags,c.store,c.gross,c.per,c.taxTreat,'Q'+(i+1),q,'','','',i===0?ev:'']);
+  }));
+  const csv='﻿'+[head,...rows].map(r=>r.map(x=>`"${String(x).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  dl(new Blob([csv],{type:'text/csv'}),'監査内容確認書.csv');
+}
+
+// 監査内容確認書 Excel（案件ごとの帳票・回答欄つき / HTMLテーブル方式で.xls）
+function downloadConfExcel(){
+  if(!CONFIRMATIONS.length){ alert('疑義案件がありません'); return; }
+  const row=(k,v)=>`<tr><td style="background:#f1f5fa;font-weight:bold;white-space:nowrap">${esc(k)}</td><td>${esc(v)}</td></tr>`;
+  let t='';
+  CONFIRMATIONS.forEach(c=>{
+    t+=`<tr><td colspan="2" style="background:#15436f;color:#fff;font-weight:bold;font-size:12pt">監査内容確認書（被監査部門 ご回答用）　${esc(c.id)}　［${esc(c.grade)}］</td></tr>`;
+    t+=row('確認書発行日',c.date+' ／ 発行：内部監査部');
+    t+=row('被監査部門','');
+    t+=row('関連決裁番号',c.rel);
+    t+=row('申請科目／利用店舗',c.applied+' ／ '+c.store);
+    t+=row('金額（税込）／参加',yen(c.gross)+'円 ／ '+c.ppl+'名（社外'+c.ext+'名）');
+    t+=row('総合評価／指摘区分',c.grade+' ／ '+c.flags);
+    t+=row('税務上の扱い',c.taxTreat+'（推奨科目：'+c.judged+'）');
+    t+=row('監査人所見（税務）',c.calc);
+    t+=row('監査人所見（決裁）',c.proc);
+    t+=row('監査人所見（相手方）',c.fraud);
+    t+=`<tr><td colspan="2" style="background:#dde7f0;font-weight:bold">ご確認・ご回答いただきたい事項（被監査部門ご記入）</td></tr>`;
+    c.questions.forEach((q,i)=>{
+      t+=`<tr><td style="vertical-align:top;width:58%">Q${i+1}. ${esc(q)}</td><td style="height:54px;background:#fffdf2">ご回答：</td></tr>`;
+    });
+    t+=`<tr><td colspan="2">提示証跡（該当に☑）：□ 領収書／インボイス　□ 参加者名簿　□ 実施伺い　□ 議題・議事録　□ 事後決裁理由書</td></tr>`;
+    t+=`<tr><td>ご回答期限：　　　年　　月　　日</td><td>ご回答者（所属・氏名）：</td></tr>`;
+    t+=`<tr><td colspan="2" style="border:none;height:10px"></td></tr>`;
+  });
+  const html=`<html><head><meta charset="utf-8"><style>table{border-collapse:collapse}td{border:1px solid #b8c4d0;padding:5px 8px;font-size:10.5pt;font-family:'Yu Gothic','MS PGothic',sans-serif;vertical-align:top}</style></head><body><table>${t}</table></body></html>`;
+  dl(new Blob(['﻿'+html],{type:'application/vnd.ms-excel'}),'監査内容確認書.xls');
 }
 
 const PROMPT=`# 役割
