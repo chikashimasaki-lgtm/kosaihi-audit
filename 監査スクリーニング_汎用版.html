@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>監査スクリーニング 汎用版</title>
+<style>
+  :root{
+    --bg:#eef2f6;--panel:#fff;--line:#d7e0e8;--txt:#27313c;--muted:#67768a;
+    --accent:#1f5f9e;--accentd:#15436f;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Meiryo UI","Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
+    background:var(--bg);color:var(--txt);line-height:1.55;padding:16px;font-size:14px}
+  .wrap{max-width:1100px;margin:0 auto}
+  header{background:linear-gradient(135deg,var(--accent),var(--accentd));color:#fff;
+    border-radius:12px;padding:16px 20px;border-bottom:3px solid #c8102e;box-shadow:0 2px 8px rgba(20,60,100,.2)}
+  header h1{font-size:1.2rem}
+  header p{font-size:.78rem;opacity:.9;margin-top:3px}
+  .notice{background:#fff7e6;border:1px solid #f0c36d;border-left:4px solid #e0a000;
+    border-radius:10px;padding:11px 14px;margin-top:12px;font-size:.82rem;color:#7a5b00;line-height:1.6}
+  .notice b{color:#a06a00}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;
+    margin-top:12px;box-shadow:0 1px 3px rgba(20,50,80,.05)}
+  .card h2{font-size:.95rem;color:var(--accentd);margin-bottom:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .cfg{display:flex;flex-wrap:wrap;gap:14px;align-items:center;font-size:.82rem}
+  .cfg label{display:flex;align-items:center;gap:6px}
+  .cfg input,.cfg select{padding:5px 7px;border:1px solid var(--line);border-radius:6px;font-size:.85rem}
+  textarea{width:100%;border:1px solid var(--line);border-radius:8px;padding:10px;
+    font-family:ui-monospace,Consolas,monospace;font-size:.76rem;resize:vertical;white-space:pre}
+  #def{height:240px}#input{height:120px}
+  .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  button{cursor:pointer;border:1px solid var(--line);border-radius:8px;padding:8px 14px;font-size:.85rem;
+    background:#fff;color:var(--txt);font-weight:600}
+  button:hover{border-color:var(--accent);color:var(--accent)}
+  button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  button.primary:hover{background:var(--accentd);color:#fff}
+  button.mini{padding:3px 9px;font-size:.76rem}
+  .note-s{font-size:.74rem;color:var(--muted);margin-top:6px}
+  .crumb{font-size:.8rem;color:var(--muted);margin-bottom:6px}
+  .crumb a{color:var(--accent);cursor:pointer;text-decoration:none}.crumb a:hover{text-decoration:underline}
+  .dash{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px}
+  .kpi{border-radius:9px;padding:10px;text-align:center;color:#fff}
+  .kpi .n{font-size:1.5rem;font-weight:800;line-height:1.1}
+  .kpi .l{font-size:.72rem;opacity:.95}
+  table{width:100%;border-collapse:collapse;font-size:.78rem;margin-top:4px}
+  th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+  th{background:var(--accentd);color:#fff;position:sticky;top:0;white-space:nowrap}
+  .tablewrap{overflow:auto;max-height:420px;border-radius:8px;border:1px solid var(--line)}
+  .badge{display:inline-block;padding:2px 8px;border-radius:11px;font-size:.72rem;font-weight:700;color:#fff;white-space:nowrap}
+  .flags{font-size:.72rem;color:#d8443b}
+  .conf{border:1px solid var(--line);border-left:4px solid #d8443b;border-radius:8px;
+    padding:12px 14px;margin-top:10px;background:#fff;font-size:.82rem;white-space:pre-wrap}
+  .conf .ch{font-weight:700;color:var(--accentd);font-size:.9rem;margin-bottom:6px}
+  .err{color:#d8443b;font-size:.78rem;margin-top:6px;white-space:pre-wrap}
+  .child{display:inline-block;border:1px solid var(--line);border-radius:8px;padding:6px 10px;margin:4px 6px 0 0;cursor:pointer;font-size:.78rem;background:#f7fafd}
+  .child:hover{border-color:var(--accent)}
+  footer{color:var(--muted);font-size:.72rem;text-align:center;margin-top:16px}
+  .legend{font-size:.72rem;color:var(--muted);margin-top:6px;line-height:1.6}
+  code{background:#eef2f6;padding:1px 5px;border-radius:4px;font-family:Consolas,monospace}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🛡️ 監査スクリーニング 汎用版</h1>
+  </header>
+
+  <div class="notice">
+    ⚠ <b>デモアプリ</b>。判定はすべて<b>端末内のルールベース計算</b>で行い、<b>AI・外部APIは不使用</b>。入力データは外部送信されません。
+  </div>
+
+  <div class="card">
+    <h2>📚 ルールセット（ライブラリ）</h2>
+    <div class="cfg">
+      <label>選択 <select id="selSet" onchange="onSelect()"></select></label>
+      <label>監査対象組織 <input id="cfgOrg" type="text" value="営業本部" style="width:180px" oninput="reRender()"></label>
+    </div>
+    <div class="crumb" id="crumb"></div>
+  </div>
+
+  <div class="card">
+    <h2>⚙️ ルールセット定義（JSON・編集可）</h2>
+    <textarea id="def" spellcheck="false" placeholder='{
+  "theme": "（監査テーマ）",
+  "levels": ["適正","注意","要改善(軽微)","要改善"],
+  "columns": ["ID","項目","金額","承認者"],
+  "display": ["ID","項目","金額"],
+  "rules": [
+    { "name":"高額", "when":"金額 > 100000", "level":"要改善(軽微)", "question":"理由をご回答ください。" },
+    { "name":"承認なし", "when":"empty(承認者)", "level":"要改善", "question":"承認手続をご説明ください。" }
+  ]
+}
+使える関数: inc(列,"語") / empty(列) / N(列) / days(a,b) / any(列,"語1","語2") / per(税込,人数,インボイス)
+roles・template・parent も任意で指定可。'></textarea>
+    <div class="btns">
+      <button onclick="applyDef()">✅ 定義を適用</button>
+    </div>
+    <div id="defErr" class="err"></div>
+  </div>
+
+  <div class="card">
+    <h2>📥 入力データ（タブ／カンマ区切り・1行1件）</h2>
+    <div class="note-s" id="colHint">列順: （定義適用後に表示）</div>
+    <textarea id="input" spellcheck="false"></textarea>
+    <div class="btns">
+      <button class="primary" onclick="runAudit()">🔍 監査実行</button>
+      <label class="mini" style="display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:8px;padding:6px 10px;cursor:pointer">⬆ CSV取込<input type="file" accept=".csv,.txt" style="display:none" onchange="loadCsv(event)"></label>
+      <button onclick="document.getElementById('input').value=''">クリア</button>
+      <button onclick="downloadCsv()">⬇ 結果CSV</button>
+    </div>
+  </div>
+
+  <div id="out"></div>
+
+  <footer>本ツールは一次スクリーニング用。最終判定は専門家・原資料で確認してください。</footer>
+</div>
+
+<script>
+// ===== 共通ヘルパー＆定数 =====
+const HELP_NAMES=["inc","empty","N","days","any","per"];
+function getHelpers(){return{
+  inc:(s,sub)=>String(s==null?'':s).includes(sub),
+  empty:(s)=>!String(s==null?'':s).trim(),
+  N:(s)=>Number(String(s==null?'':s).replace(/[,\s]/g,''))||0,
+  days:(a,b)=>{const d=Math.round((new Date(a)-new Date(b))/86400000);return isNaN(d)?0:d;},
+  // いずれかの語を含むか
+  any:(s,...subs)=>subs.some(x=>String(s==null?'':s).includes(x)),
+  // 監査用税抜の1人あたり額（税率10%・未登録は経過措置で控除不可20%上乗せ）
+  per:(gross,ppl,inv)=>{const g=Number(gross)||0;const body=Math.round(g/1.1);const vat=g-body;
+    const te=String(inv==null?'':inv).includes('未')?body+Math.round(vat*0.2):body;const p=Number(ppl)||1;return te/(p||1);}
+};}
+const DEFAULT_LEVELS=["適正","注意","要改善(軽微)","要改善"];
+
+// ===== ③ 共通ルールテンプレート（roles参照）=====
+const TEMPLATES={
+ "整備状況評価v1":[
+  {name:"規程・文書が未整備",when:"role.doc=='無'",level:"要改善",
+   question:"当該項目に係る規程・手順・計画が文書として整備されていません。文書化の有無・整備予定をご回答ください。"},
+  {name:"未整備（未着手）",when:"role.status=='未整備'",level:"要改善",
+   question:"求められる整備が未着手です。現状と整備計画・時期・所管をご説明ください。"},
+  {name:"キー項目の整備不備",when:"role.key=='Y' && (role.status=='未整備' || role.status=='一部' || role.doc=='無')",level:"要改善",
+   question:"重要度の高い項目（キー項目）にもかかわらず整備が不十分です。把握状況と是正の優先度・対応方針をご説明ください。"},
+  {name:"整備が一部にとどまる",when:"role.status=='一部'",level:"要改善(軽微)",
+   question:"整備が一部にとどまっています。未整備の範囲と完了時期をご回答ください。"},
+  {name:"所管・責任が不明確",when:"role.owner=='無'",level:"要改善(軽微)",
+   question:"所管部署・責任者が明確化されていません。所管と権限・責任の定めをご提示ください。"},
+  {name:"運用・検証の証跡なし",when:"role.ops=='無'",level:"注意",
+   question:"運用・検証の実績／証跡が確認できません。直近の運用・検証状況をご回答ください。"},
+  {name:"整備確認が未実施",when:"empty(role.date)",level:"注意",
+   question:"整備状況の確認（最終確認日）が記録されていません。直近の確認状況をご回答ください。"}
+ ]
+};
+
+// ===== ① ルールセット・ライブラリ（④ parentで階層化）=====
+const LIBRARY=[
+ // --- 取引系（明示ルール・デフォルト4段階）---
+ {id:"expense-authority",parent:null,theme:"決裁権限逸脱（職務権限規程）スクリーニング",
+  columns:["申請ID","日付","部署","申請者","取引先","金額","承認者","承認役職","承認限度額","備考"],
+  display:["申請ID","部署","金額","承認者","承認役職","承認限度額"],
+  rules:[
+   {name:"承認限度額超過(権限逸脱)",when:"!empty(承認限度額) && 金額 > 承認限度額",level:"要改善",
+    question:"承認者の決裁権限限度額を超える金額を承認しています。上位者の決裁を経たか、権限逸脱の経緯と是正状況をご回答ください。"},
+   {name:"自己承認(職務分掌違反)",when:"!empty(承認者) && 申請者==承認者",level:"要改善",
+    question:"申請者と承認者が同一です（自己承認）。職務分掌に反します。第三者承認を経なかった理由をご説明ください。"},
+   {name:"承認者不在",when:"empty(承認者)",level:"要改善",
+    question:"承認者が記録されていません。決裁手続・承認証跡をご提示ください。"},
+   {name:"分割発注疑い(限度額直下)",when:"!empty(承認限度額) && 金額 >= 承認限度額*0.9 && 金額 < 承認限度額",level:"注意",
+    question:"承認限度額の直下（90%以上）の金額です。分割発注による権限回避でないか、発注の一体性をご回答ください。"},
+   {name:"一般職による高額承認",when:"(inc(承認役職,'担当') || inc(承認役職,'主任')) && 金額 > 100000",level:"要改善(軽微)",
+    question:"一般職が10万円超を承認しています。承認権限の規程上の根拠をご回答ください。"}
+  ],
+  data:[
+   ["REQ-101","2026-06-01","購買部","佐藤","山田商事",250000,"田中課長","課長",300000,"複合機リース"],
+   ["REQ-102","2026-06-02","営業1課","鈴木","ABC社",150000,"高橋係長","係長",100000,"展示会出展費"],
+   ["REQ-103","2026-06-03","総務部","渡辺","オフィス商会",80000,"渡辺","課長",300000,"備品購入"],
+   ["REQ-104","2026-06-04","開発部","伊藤","部品商事",290000,"山本課長","課長",300000,"試作部材"],
+   ["REQ-105","2026-06-05","営業2課","中村","テック社",120000,"","",100000,"開発機材"],
+   ["REQ-106","2026-06-06","購買部","小林","文具センター",120000,"加藤担当","担当",50000,"消耗品まとめ買い"],
+   ["REQ-107","2026-06-07","経理部","松本","監査法人",800000,"吉田部長","部長",1000000,"監査報酬"],
+   ["REQ-108","2026-06-08","営業3課","井上","料亭花月",95000,"林課長","課長",100000,"取引先接待"],
+   ["REQ-109","2026-06-09","人事部","清水","研修会社",350000,"木村課長","課長",300000,"新人研修"],
+   ["REQ-110","2026-06-10","開発部","山口","システム社",480000,"井上係長","係長",100000,"ソフト導入"]
+  ]},
+
+ // --- 交際費・会議費（派生計算：税抜1人あたり額・費目・隠蔽/偽装）---
+ {id:"kosaihi",parent:null,theme:"会議費・交際費 監査スクリーニング",
+  columns:["精算申請ID","関連決裁番号","支出日","事前承認日","精算決裁日","金額税込","人数","社外人数","インボイス","店舗","申請科目","社内役職","社外役職","事後理由"],
+  display:["精算申請ID","金額税込","人数","社外人数","店舗","申請科目"],
+  rules:[
+   {name:"1万円超(隠れ交際費)",when:"申請科目=='会議費' && 社外人数>0 && per(金額税込,人数,インボイス) > 10000",level:"要改善(軽微)",
+    question:"1人あたりの監査用税抜額が基準（1万円）を超えており、会議費ではなく交際費に該当すると考えられます。会議費とされた根拠をご回答ください。"},
+   {name:"社内飲食費を会議費計上",when:"申請科目=='会議費' && 社外人数==0",level:"要改善(軽微)",
+    question:"社外参加者のいない社内のみの飲食を会議費とされています。会議の実態（議題・資料等）と会議費とされた根拠をご回答ください。"},
+   {name:"社外混入の福利厚生費",when:"申請科目=='福利厚生費' && 社外人数>0",level:"要改善(軽微)",
+    question:"福利厚生費に社外参加者が含まれています。全従業員対象の慰安行事に該当しますか。交際費に当たらない理由をご回答ください。"},
+   {name:"ゴルフ・贈答の隠れ交際費",when:"any(店舗,'ゴルフ','カントリー','手土産','菓子折','贈答','百貨店','中元','歳暮') && 申請科目!='交際費'",level:"要改善(軽微)",
+    question:"取引先とのゴルフ・贈答（手土産等）と見受けられ、税務上は全額交際費に該当すると考えられますが、別科目で申請されています。当該科目とされた根拠をご回答ください。"},
+   {name:"事前申請なし",when:"empty(関連決裁番号)",level:"要改善(軽微)",
+    question:"事前の実施伺い（決裁）を経ていません。事前申請を行わなかった理由を具体的にご回答ください。"},
+   {name:"事後決裁(理由なし)",when:"!empty(事前承認日) && days(事前承認日,支出日)>0 && empty(事後理由)",level:"要改善(軽微)",
+    question:"事前承認日が支出日より後（事後決裁）で、かつ理由の記載がありません。事後決裁となった理由をご回答ください。"},
+   {name:"事後決裁(理由あり)",when:"!empty(事前承認日) && days(事前承認日,支出日)>0 && !empty(事後理由)",level:"注意",
+    question:"事後決裁となっています。記載理由の妥当性（不可抗力か否か）の確認のため、経緯の補足をご回答ください。"},
+   {name:"決裁遅延",when:"!empty(精算決裁日) && days(精算決裁日,支出日) > 10",level:"要改善(軽微)",
+    question:"精算決裁が支出日から猶予（10日）を超えています。決裁が遅延した理由をご回答ください。"},
+   {name:"相手方偽装疑い(高級店×役職不整合)",when:"any(店舗,'割烹','料亭','会員制','クラブ','ステーキ','鮨','寿司','銀座','久兵衛','高級','フレンチ','鉄板') && any(社内役職,'役員','社長','会長','専務','常務','執行','本部長','部長') && any(社外役職,'担当','社員','主任','係')",level:"要改善",
+    question:"高級店利用かつ社内上位役職×社外下位役職の不整合があります。実際の参加者（要職者・利害関係者）の隠蔽が疑われます。参加者全員の氏名・所属・役職、会合目的、店舗選定理由をご回答ください。"},
+   {name:"隠蔽目的の事前申請回避",when:"(any(店舗,'割烹','料亭','会員制','クラブ','ステーキ','鮨','寿司','銀座','久兵衛','高級','フレンチ','鉄板') || any(店舗,'ゴルフ','カントリー')) && (empty(関連決裁番号) || (!empty(事前承認日) && days(事前承認日,支出日)>0))",level:"要改善",
+    question:"高級店・ゴルフ利用でありながら事前申請を回避しています。隠蔽目的でないか、事前申請を行わなかった経緯を具体的にご説明ください。"}
+  ],
+  data:[
+   ["EXP-2026-0901","ADV-2026-0901","2026-06-02","2026-06-01","2026-06-05",20371,3,2,"登録","ファミレス ガスト","会議費","主任","担当者",""],
+   ["EXP-2026-0906","ADV-2026-0906","2026-06-07","2026-06-05","2026-06-10",15484,2,1,"登録","ドトール","会議費","主任","担当者",""],
+   ["EXP-2026-0902","ADV-2026-0902","2026-06-03","2026-06-01","2026-06-06",44000,2,1,"登録","ホテルラウンジ","会議費","課長","担当者",""],
+   ["EXP-2026-0045","ADV-2026-0045","2026-06-12","2026-06-10","2026-06-15",44000,4,2,"未登録","和食さと","会議費","課長","担当者",""],
+   ["EXP-2026-0905","ADV-2026-0905","2026-06-06","2026-06-04","2026-06-09",52861,7,0,"登録","中華料理 福しん","会議費","担当者","",""],
+   ["EXP-2026-0320","ADV-2026-0320","2026-06-18","2026-06-16","2026-06-21",80000,8,2,"登録","新年会 宴会場","福利厚生費","部長","担当者",""],
+   ["EXP-2026-1092","","2026-06-12","","2026-06-20",72000,3,2,"登録","富士桜ゴルフ倶楽部","旅費交通費","課長","担当者",""],
+   ["EXP-2026-1096","ADV-2026-1096","2026-06-06","2026-06-01","2026-06-09",9800,1,1,"登録","菓子折 手土産(取引先)","会議費","課長","担当者",""],
+   ["EXP-2026-0079","ADV-2026-0079","2026-06-10","2026-06-12","2026-06-14",34000,4,2,"登録","ガスト","会議費","課長","担当者","急な顧客からの呼び出しで事前申請の時間的猶予がなかった"],
+   ["EXP-2026-0080","ADV-2026-0080","2026-06-10","2026-06-12","2026-06-14",34000,4,2,"登録","サイゼリヤ","会議費","課長","担当者",""],
+   ["EXP-2026-0414","ADV-2026-0414","2026-06-01","2026-05-30","2026-06-20",35200,4,2,"登録","ファミレス ジョナサン","会議費","課長","担当者",""],
+   ["EXP-2026-0413","ADV-2026-0413","2026-06-12","2026-06-09","2026-06-15",88000,4,2,"登録","鉄板焼 銀座うかい亭","会議費","専務","担当者",""],
+   ["EXP-2026-0411","","2026-06-10","","2026-06-25",39600,4,2,"登録","銀座 久兵衛(会員制)","会議費","役員","担当者",""],
+   ["EXP-2026-1095","ADV-2026-1095","2026-06-07","2026-06-02","2026-06-10",12000,1,1,"登録","百貨店 手土産(取引先)","交際費","部長","部長",""]
+  ]},
+
+ // --- ⑤ 可変レベル（不備区分3段階）：内部統制RCM ---
+ {id:"ic-rcm",parent:null,theme:"整備状況評価（内部統制RCM）",
+  levels:["適正","不備","重要な不備"],
+  columns:["統制ID","業務プロセス","リスク","統制活動","キーコントロール","規程文書","職務分掌","承認権限の明確化","証跡保存","評価日","結論"],
+  display:["統制ID","業務プロセス","キーコントロール","規程文書","職務分掌","証跡保存"],
+  rules:[
+   {name:"重要統制の文書化不備",when:"キーコントロール=='Y' && 規程文書=='無'",level:"重要な不備",
+    question:"キーコントロールにもかかわらず規程文書が未整備です。統制設計と文書化計画をご説明ください。"},
+   {name:"規程未整備",when:"規程文書=='無'",level:"不備",
+    question:"統制を定めた規程・マニュアルが未整備です。文書化の有無・予定をご回答ください。"},
+   {name:"職務分掌の不備",when:"職務分掌=='無'",level:"不備",
+    question:"職務分掌（相互牽制）が確保されていません。代替統制をご回答ください。"},
+   {name:"承認権限が不明確",when:"承認権限の明確化=='無'",level:"不備",
+    question:"承認権限（限度額・職位）が不明確です。職務権限規程の定義をご提示ください。"},
+   {name:"証跡保存なし",when:"証跡保存=='無'",level:"不備",
+    question:"統制実施の証跡が保存されていません。証跡の種類・保存方法をご回答ください。"}
+  ],
+  data:[
+   ["C-01","購買","未承認発注","発注承認","Y","有","有","有","有","2026-06-01","整備適正"],
+   ["C-02","販売","与信限度超過","与信自動チェック","Y","無","有","有","有","2026-06-02",""],
+   ["C-03","出納","現金の着服","出納と記帳の分離","Y","有","無","有","有","2026-06-03",""],
+   ["C-04","購買","過大支払","支払承認","N","有","有","無","有","2026-06-04",""],
+   ["C-05","在庫","棚卸差異","実地棚卸","N","有","有","有","無","2026-06-05",""],
+   ["C-06","固定資産","現物不一致","現物照合","N","有","有","有","有","",""],
+   ["C-07","給与","架空人件費","勤怠照合","Y","有","有","有","有","2026-06-07","整備適正"],
+   ["C-08","経費","私的利用","上長承認","N","無","有","有","有","2026-06-08",""]
+  ]},
+
+ // --- ②③④ テンプレ＋ロール＋階層：サイバーセキュリティ ---
+ {id:"cyber-all",parent:null,theme:"サイバーセキュリティ整備状況評価（金融庁ガイドライン全体）",
+  template:"整備状況評価v1",
+  roles:{status:"整備状況",key:"キー項目",doc:"規程文書",owner:"責任部署明確",ops:"証跡保存",date:"最終整備日"},
+  columns:["項番","管理態勢区分","評価項目","キー項目","規程文書","責任部署明確","整備状況","証跡保存","最終整備日","結論"],
+  display:["項番","管理態勢区分","評価項目","キー項目","規程文書","整備状況"],
+  data:[
+   ["2.1.1","管理態勢構築","基本方針・規程類の策定","Y","有","有","整備済","有","2026-05-10","整備適正"],
+   ["2.1.2","管理態勢構築","規程等及び業務プロセスの整備","Y","有","有","一部","有","2026-05-12",""],
+   ["2.1.3","管理態勢構築","経営資源の確保・人材育成","N","有","有","一部","有","2026-05-13",""],
+   ["2.1.4","管理態勢構築","リスク管理部門による牽制","N","有","無","整備済","有","2026-05-14",""],
+   ["2.1.5","管理態勢構築","内部監査","N","有","有","整備済","有","2026-05-15","整備適正"],
+   ["2.2.1","リスク特定","情報資産管理（台帳整備）","Y","有","有","整備済","有","2026-05-16","整備適正"],
+   ["2.2.2","リスク特定","リスク管理プロセス","Y","無","有","未整備","無","2026-05-17",""],
+   ["2.2.3","リスク特定","脆弱性管理","N","有","有","一部","有","2026-05-18",""],
+   ["2.2.4","リスク特定","脆弱性診断・ペネトレーションテスト","N","有","有","未整備","無","",""],
+   ["2.3.1","防御","認証・アクセス管理","Y","有","有","整備済","有","2026-05-20","整備適正"],
+   ["2.3.3","防御","データ保護（暗号化等）","Y","有","有","一部","有","2026-05-22",""],
+   ["2.4.1","検知","監視（ログ監視・SOC）","Y","有","有","整備済","有","2026-05-23","整備適正"],
+   ["2.5.1","対応・復旧","インシデント対応計画","Y","無","有","未整備","無","",""],
+   ["2.6","サードパーティ","委託先リスク管理","Y","有","無","一部","有","2026-05-25",""]
+  ]},
+
+ {id:"cyber-2.1.1",parent:"cyber-all",theme:"管理態勢構築 基本方針・規程類の策定（2.1.1）整備状況評価",
+  template:"整備状況評価v1",
+  roles:{status:"整備状況",key:"キー項目",doc:"文書化",owner:"取締役会承認",ops:"定期見直し",date:"最終確認日"},
+  columns:["項番","対応区分","要求事項","キー項目","文書化","取締役会承認","整備状況","定期見直し","最終確認日","結論"],
+  display:["項番","対応区分","要求事項","キー項目","文書化","整備状況"],
+  data:[
+   ["2.1.1-①","基本的対応事項","基本方針の策定（取締役会承認）","Y","有","有","整備済","有","2026-05-01","整備適正"],
+   ["2.1.1-②","基本的対応事項","管理態勢の整備・年1回レビュー","Y","有","有","一部","有","2026-05-02",""],
+   ["2.1.1-③","基本的対応事項","組織体制の整備（情報共有・SOC・CSIRT等）","Y","有","有","一部","有","2026-05-03",""],
+   ["2.1.1-④","基本的対応事項","戦略・取組計画の策定と年次見直し","Y","有","無","整備済","有","2026-05-04",""],
+   ["2.1.1-⑤","基本的対応事項","セキュリティ・バイ・デザインの推進","Y","有","該当外","一部","有","2026-05-05",""],
+   ["2.1.1-⑥","基本的対応事項","経営陣のリーダーシップ・組織風土醸成","Y","有","該当外","整備済","有","2026-05-06","整備適正"],
+   ["2.1.1-⑦","基本的対応事項","役割・責任・権限の明確化／CISO任命","Y","有","有","整備済","有","2026-05-07","整備適正"],
+   ["2.1.1-⑧","基本的対応事項","経営陣への年1回報告","Y","有","該当外","一部","有","2026-05-08",""],
+   ["2.1.1-⑨","基本的対応事項","監査結果を踏まえた継続的改善","Y","有","該当外","整備済","無","2026-05-09",""],
+   ["2.1.1-a","望ましい事項","3線防衛・外部専門家によるガバナンス","N","有","該当外","整備済","有","2026-05-10","整備適正"],
+   ["2.1.1-b","望ましい事項","リスクアペタイト／トレランス設定","N","無","該当外","未整備","無","",""]
+  ]},
+
+ {id:"cyber-2.1.1-3",parent:"cyber-2.1.1",theme:"基本方針・規程類の策定 組織体制の整備（2.1.1-③）整備状況評価",
+  template:"整備状況評価v1",
+  roles:{status:"整備状況",key:"キー項目",doc:"規程手順",owner:"所管明確",ops:"訓練検証",date:"最終確認日"},
+  columns:["項番","体制区分","整備すべき体制要素","キー項目","規程手順","所管明確","整備状況","訓練検証","最終確認日","結論"],
+  display:["項番","体制区分","整備すべき体制要素","キー項目","規程手順","整備状況"],
+  data:[
+   ["2.1.1-③-1","情報共有・分析","ISAC等を通じた情報収集体制","Y","有","有","整備済","有","2026-05-03","整備適正"],
+   ["2.1.1-③-2","情報共有・分析","収集情報の社内共有・分析体制","Y","有","有","一部","有","2026-05-03",""],
+   ["2.1.1-③-3","監視（SOC）","SOC等による監視体制","Y","有","有","整備済","有","2026-05-04","整備適正"],
+   ["2.1.1-③-5","危機管理","報告体制（経営層・当局）","Y","有","有","整備済","有","2026-05-05","整備適正"],
+   ["2.1.1-③-6","危機管理","顧客・対外広報体制","Y","無","無","未整備","無","",""],
+   ["2.1.1-③-7","危機管理","組織内CSIRTの緊急時対応体制","Y","有","有","一部","有","2026-05-06",""],
+   ["2.1.1-③-8","危機管理","早期警戒の体制","Y","有","有","整備済","無","2026-05-06",""]
+  ]},
+
+ {id:"cyber-2.1.1-3-1",parent:"cyber-2.1.1-3",theme:"組織体制の整備 ISAC等を通じた情報収集体制（2.1.1-③-1）整備状況評価",
+  template:"整備状況評価v1",
+  roles:{status:"整備状況",key:"キー項目",doc:"規程手順",owner:"所管明確",ops:"運用実績",date:"最終確認日"},
+  columns:["項番","機能区分","整備すべき機能要素","キー項目","規程手順","所管明確","整備状況","運用実績","最終確認日","結論"],
+  display:["項番","機能区分","整備すべき機能要素","キー項目","規程手順","整備状況"],
+  data:[
+   ["2.1.1-③-1-a","加盟・受領","金融ISAC等への加盟","Y","有","有","整備済","有","2026-05-03","整備適正"],
+   ["2.1.1-③-1-b","加盟・受領","脅威情報の受領窓口","Y","有","有","一部","有","2026-05-03",""],
+   ["2.1.1-③-1-c","加盟・受領","タイムリーな情報受領運用","N","有","有","整備済","無","2026-05-03",""],
+   ["2.1.1-③-1-d","分析","分析担当（アナリスト）配置","Y","有","有","一部","有","2026-05-04",""],
+   ["2.1.1-③-1-e","分析","影響度評価・優先度判定","Y","有","無","整備済","有","2026-05-04",""],
+   ["2.1.1-③-1-f","共有・連携","SOC・CSIRT・経営層への共有フロー","Y","有","有","一部","有","2026-05-05",""],
+   ["2.1.1-③-1-g","共有・連携","当局・業界団体への連携・報告","N","無","有","未整備","無","",""],
+   ["2.1.1-③-1-h","共有・連携","情報の機密管理（TLP等）","N","有","有","整備済","有","2026-05-05","整備適正"],
+   ["2.1.1-③-1-i","運用・改善","収集情報の対策反映","Y","有","有","一部","有","2026-05-06",""],
+   ["2.1.1-③-1-j","運用・改善","有効性レビュー・改善","N","有","有","整備済","無","2026-05-06",""]
+  ]}
+];
+const BYID={}; LIBRARY.forEach(d=>BYID[d.id]=d);
+
+// ===== エンジン =====
+let CTX=null, RESULTS=[], CONFIRMATIONS=[];
+
+function resolveRules(def){
+  const t=(def.template&&TEMPLATES[def.template])?TEMPLATES[def.template]:[];
+  return [...t,...(def.rules||[])];
+}
+function compileDef(def){
+  const cols=def.columns.slice();
+  const levels=(def.levels&&def.levels.length)?def.levels.slice():DEFAULT_LEVELS.slice();
+  const roleMap=def.roles||{}; const roleKeys=Object.keys(roleMap);
+  const rules=resolveRules(def);
+  const argNames=[...cols,'role',...HELP_NAMES];
+  const compiled=rules.map(r=>{
+    if(!r.when) return {rule:r,fn:()=>false};
+    if(!levels.includes(r.level)) throw new Error("level「"+r.level+"」がlevelsに未定義（ルール: "+(r.name||'')+"）");
+    return {rule:r,fn:new Function(...argNames,'return ('+r.when+');')};
+  });
+  // role参照先の列が存在するか検査
+  roleKeys.forEach(k=>{ if(!cols.includes(roleMap[k])) throw new Error("roles."+k+" の参照列「"+roleMap[k]+"」がcolumnsにありません"); });
+  const display=(def.display&&def.display.length)?def.display.slice():cols.slice();
+  return {def,cols,levels,roleMap,roleKeys,compiled,display,theme:def.theme||'監査スクリーニング'};
+}
+function coerce(v){const t=String(v==null?'':v).trim();return (t!==''&&/^-?\d+(\.\d+)?$/.test(t))?Number(t):v;}
+function buildArgs(ctx,row){
+  const h=getHelpers();
+  const vals=ctx.cols.map(c=>coerce(row[c]));
+  const role={}; ctx.roleKeys.forEach(k=>role[k]=coerce(row[ctx.roleMap[k]]));
+  return [...vals,role,...HELP_NAMES.map(n=>h[n])];
+}
+function auditRow(ctx,row){
+  const args=buildArgs(ctx,row); const matched=[];
+  ctx.compiled.forEach(c=>{let hit;try{hit=!!c.fn(...args);}catch(e){hit=false;}if(hit)matched.push(c.rule);});
+  let grade=ctx.levels[0],gi=0;
+  matched.forEach(r=>{const k=ctx.levels.indexOf(r.level);if(k>gi){gi=k;grade=r.level;}});
+  return {row,matched,grade,flags:matched.map(r=>r.name),questions:matched.filter(r=>r.question).map(r=>r.question)};
+}
+function runRows(ctx,rows){return rows.map(r=>auditRow(ctx,r));}
+function rowsFromData(ctx,data){return data.map(arr=>{const o={};ctx.cols.forEach((c,i)=>o[c]=arr[i]);return o;});}
+
+// ===== 色（可変レベル対応）=====
+function colorFor(idx,total){ if(idx<=0)return '#2f9e5f'; if(idx>=total-1)return '#d8443b'; if(idx===total-2)return '#e0a000'; return '#2b7fd0'; }
+function lightFor(idx,total){ if(idx<=0)return ''; if(idx>=total-1)return '#fdecea'; if(idx===total-2)return '#fdf6e3'; return '#eaf3fc'; }
+
+// ===== UI：選択・定義 =====
+function depthOf(d){ let n=0,cur=d; while(cur&&cur.parent&&BYID[cur.parent]){ n++; cur=BYID[cur.parent]; } return n; }
+function buildSelect(){
+  const sel=document.getElementById('selSet'); sel.innerHTML='';
+  const blank=document.createElement('option'); blank.value=''; blank.textContent='（カスタム：下の定義JSONを直接編集）';
+  sel.appendChild(blank);
+  LIBRARY.forEach(d=>{
+    const o=document.createElement('option'); o.value=d.id;
+    const dep=depthOf(d);
+    o.textContent=(dep?'　'.repeat(dep)+'└ ':'')+d.id+'  —  '+d.theme;
+    sel.appendChild(o);
+  });
+}
+function defWithoutData(def){const {data, ...rest}=def; return rest;}
+function clearAll(){
+  CTX=null; RESULTS=[];
+  document.getElementById('def').value='';
+  document.getElementById('input').value='';
+  document.getElementById('colHint').textContent='列順: （定義適用後に表示）';
+  document.getElementById('crumb').innerHTML='';
+  document.getElementById('defErr').textContent='';
+  document.getElementById('out').innerHTML='<div class="card note-s">ライブラリから選ぶか、上の「定義JSON」を記述して「✅ 定義を適用」→「🔍 監査実行」してください。</div>';
+}
+function onSelect(){
+  const v=document.getElementById('selSet').value;
+  if(!v){ clearAll(); return; }
+  loadRuleset(v);
+}
+function loadRuleset(id){
+  const def=BYID[id]; if(!def) return;
+  document.getElementById('def').value=JSON.stringify(defWithoutData(def),null,2);
+  document.getElementById('input').value=(def.data||[]).map(r=>r.join('\t')).join('\n');
+  document.getElementById('selSet').value=id;
+  applyDef();
+  // 定義の読み込みのみ。結果は「監査実行」を押すまで表示しない
+  RESULTS=[]; document.getElementById('out').innerHTML='<div class="card note-s">「🔍 監査実行」を押すと判定結果を表示します。</div>';
+}
+function applyDef(){
+  const errBox=document.getElementById('defErr'); errBox.textContent='';
+  let def;
+  try{ def=JSON.parse(document.getElementById('def').value); }
+  catch(e){ errBox.textContent='JSON構文エラー: '+e.message; return false; }
+  if(!Array.isArray(def.columns)||!def.columns.length){ errBox.textContent='columns（列名配列）が必要です。'; return false; }
+  try{ CTX=compileDef(def); }catch(e){ errBox.textContent=e.message; return false; }
+  document.getElementById('colHint').textContent='列順: '+CTX.cols.join(', ')
+    +(CTX.roleKeys.length?'　／ roles: '+CTX.roleKeys.map(k=>k+'→'+CTX.roleMap[k]).join(', '):'')
+    +(def.template?'　／ template: '+def.template:'');
+  renderCrumb();
+  errBox.style.color='var(--ok,#2f9e5f)'; errBox.textContent='✔ 定義を適用しました（ルール'+CTX.compiled.length+'件・レベル'+CTX.levels.length+'段階）';
+  setTimeout(()=>{errBox.textContent='';errBox.style.color='';},2500);
+  return true;
+}
+
+// ===== ④ パンくず＆階層 =====
+function renderCrumb(){
+  const c=document.getElementById('crumb');
+  const id=CTX&&CTX.def&&CTX.def.id;
+  if(!id||!BYID[id]){ c.innerHTML='<i>カスタム定義</i>'; return; }
+  const chain=[]; let cur=BYID[id];
+  while(cur){ chain.unshift(cur); cur=cur.parent?BYID[cur.parent]:null; }
+  c.innerHTML='階層: '+chain.map((d,i)=> i<chain.length-1
+    ? `<a onclick="loadRuleset('${d.id}')">${d.id}</a>` : `<b>${d.id}</b>`).join(' ＞ ');
+}
+
+// ===== 監査実行＆描画 =====
+function parseInput(){
+  const lines=document.getElementById('input').value.trim().split('\n').filter(l=>l.trim());
+  return lines.map(l=>{const c=l.includes('\t')?l.split('\t'):l.split(',');const o={};CTX.cols.forEach((k,i)=>o[k]=(c[i]||'').trim());return o;});
+}
+function runAudit(){
+  if(!CTX){ if(!applyDef()) return; }
+  const rows=parseInput();
+  const out=document.getElementById('out');
+  if(!rows.length){ out.innerHTML='<div class="card">データがありません。</div>'; return; }
+  RESULTS=runRows(CTX,rows);
+  render();
+}
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function render(){
+  const org=document.getElementById('cfgOrg').value||'';
+  const theme=CTX.theme, levels=CTX.levels, total=levels.length;
+  const today=new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Tokyo'});
+  const cnt={}; levels.forEach(l=>cnt[l]=0); RESULTS.forEach(a=>cnt[a.grade]++);
+
+  // サマリー
+  let h=`<div class="card"><h2>📊 監査結果サマリー（${RESULTS.length}件）<span style="font-weight:400;font-size:.78rem;color:var(--muted)">／ ${esc(theme)}</span></h2><div class="dash">`;
+  h+=`<div class="kpi" style="background:#54657a"><div class="n">${RESULTS.length}</div><div class="l">総件数</div></div>`;
+  levels.forEach((l,i)=>{ h+=`<div class="kpi" style="background:${colorFor(i,total)}"><div class="n">${cnt[l]}</div><div class="l">${esc(l)}</div></div>`; });
+  h+=`</div></div>`;
+
+  // ④ 階層ロールアップ（子ルールセットがあれば集約評価を表示）
+  const id=CTX.def.id;
+  const children=id?LIBRARY.filter(d=>d.parent===id):[];
+  if(children.length){
+    h+=`<div class="card"><h2>🧭 階層ロールアップ（子項目の集約）</h2><div class="tablewrap"><table><thead><tr><th>子ルールセット</th><th>件数</th><th>集約評価（最悪値）</th><th>内訳</th><th></th></tr></thead><tbody>`;
+    children.forEach(cd=>{
+      let cx; try{ cx=compileDef(cd); }catch(e){ return; }
+      const res=runRows(cx,rowsFromData(cx,cd.data||[]));
+      const cc={}; cx.levels.forEach(l=>cc[l]=0); res.forEach(a=>cc[a.grade]++);
+      let worst=cx.levels[0],wi=0; res.forEach(a=>{const k=cx.levels.indexOf(a.grade);if(k>wi){wi=k;worst=a.grade;}});
+      const breakdown=cx.levels.map(l=>l+':'+cc[l]).join('  ');
+      h+=`<tr><td>${esc(cd.theme)}<br><span style="color:var(--muted);font-size:.72rem">${cd.id}</span></td>
+        <td style="text-align:right">${res.length}</td>
+        <td><span class="badge" style="background:${colorFor(wi,cx.levels.length)}">${esc(worst)}</span></td>
+        <td style="font-size:.72rem">${esc(breakdown)}</td>
+        <td><button class="mini" onclick="loadRuleset('${cd.id}')">開く ▶</button></td></tr>`;
+    });
+    h+=`</tbody></table></div><div class="note-s">※ 親の評価は子の最悪値で集約。各子は自身のサンプルデータで評価しています。</div></div>`;
+  }
+
+  // 判定一覧（display列）
+  const idCol=CTX.cols[0]; const dispCols=CTX.display.filter(c=>c!==idCol);
+  h+=`<div class="card"><h2>📋 判定一覧</h2><div class="tablewrap"><table><thead><tr><th>${esc(idCol)}</th><th>評価</th>`;
+  dispCols.forEach(c=>h+=`<th>${esc(c)}</th>`); h+=`<th>検知フラグ</th></tr></thead><tbody>`;
+  RESULTS.forEach(a=>{
+    const gi=levels.indexOf(a.grade);
+    h+=`<tr style="background:${lightFor(gi,total)}"><td>${esc(a.row[idCol])}</td><td><span class="badge" style="background:${colorFor(gi,total)}">${esc(a.grade)}</span></td>`;
+    dispCols.forEach(c=>h+=`<td>${esc(a.row[c])}</td>`);
+    h+=`<td>${a.flags.length?`<span class="flags">${a.flags.map(esc).join('、')}</span>`:'<span style="color:#2f9e5f">✔ 適正</span>'}</td></tr>`;
+  });
+  h+=`</tbody></table></div></div>`;
+
+  // 確認書（疑義＝最良レベル以外）
+  const flagged=RESULTS.filter(a=>a.grade!==levels[0]);
+  h+=`<div class="card"><h2>🧾 監査内容確認書（疑義 ${flagged.length}件・適正は自動スルー）</h2>`;
+  if(flagged.length) h+=`<div class="btns"><button onclick="downloadConfCsv()">⬇ 確認書CSV</button><button onclick="downloadConfExcel()">⬇ 確認書Excel</button></div>`;
+  if(!flagged.length) h+='<div class="note-s">疑義案件はありません。</div>';
+  CONFIRMATIONS=[];
+  flagged.forEach(a=>{
+    const r=a.row, gi=levels.indexOf(a.grade);
+    const qs=a.questions.length?a.questions.slice():['本案件の内容・経緯について補足の説明をご回答ください。'];
+    const detail=CTX.cols.map(c=>`${c}：${r[c]||'（空欄）'}`).join(' ／ ');
+    CONFIRMATIONS.push({date:today,theme,org,id:r[idCol],grade:a.grade,flags:a.flags.join('、'),detail,questions:qs.slice()});
+    const ANS='\n      ご回答：______________________________________________';
+    h+=`<div class="conf" style="border-left-color:${colorFor(gi,total)}"><div class="ch">【監査内容確認書（被監査部門 ご回答用）】 ${esc(theme)}</div>`+
+`■ 1. 対象案件
+  確認書発行日：${today}　／　発行：内部監査部
+  監査対象組織：${esc(org)||'（　　　　　　　　）'}
+  対象ID：${esc(r[idCol])}
+  案件内容：${esc(detail)}
+
+■ 2. 監査人の所見
+  総合評価：${esc(a.grade)}　／　指摘区分：${esc(a.flags.join('、'))}
+
+■ 3. ご確認・ご回答いただきたい事項（被監査部門ご記入）
+${qs.map((x,i)=>`  Q${i+1}. ${esc(x)}${ANS}`).join('\n\n')}
+
+■ 4. ご提示をお願いする証跡（該当に☑）
+  □ 証憑（規程・台帳・記録等）　□ 承認・決裁記録　□ 関連資料（議事録・計画書等）
+
+ご回答期限：　　　年　　月　　日　／　ご回答者（所属・氏名）：________________</div>`;
+  });
+  h+=`</div>`;
+  document.getElementById('out').innerHTML=h;
+}
+
+// ===== 入出力 =====
+function reRender(){ if(RESULTS.length) render(); }
+function loadCsv(ev){
+  const f=ev.target.files[0]; if(!f) return;
+  const rd=new FileReader();
+  rd.onload=()=>{ document.getElementById('input').value=String(rd.result).replace(/^﻿/,'').trim();
+    RESULTS=[]; document.getElementById('out').innerHTML='<div class="card note-s">CSVを取り込みました。「🔍 監査実行」を押すと判定結果を表示します。</div>'; };
+  rd.readAsText(f,'UTF-8'); ev.target.value='';
+}
+function dl(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();}
+function downloadCsv(){
+  if(!RESULTS.length){ alert('先に監査を実行してください'); return; }
+  const head=[...CTX.cols,'総合評価','検知フラグ'];
+  const rows=RESULTS.map(a=>[...CTX.cols.map(c=>a.row[c]),a.grade,a.flags.join('；')]);
+  const csv='﻿'+[head,...rows].map(r=>r.map(c=>`"${String(c==null?'':c).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  dl(new Blob([csv],{type:'text/csv'}),'screening_results.csv');
+}
+function downloadConfCsv(){
+  if(!CONFIRMATIONS.length){ alert('疑義案件がありません'); return; }
+  const head=['確認書発行日','監査テーマ','対象ID','監査対象組織','総合評価','指摘区分','案件内容','質問No','質問内容','ご回答','回答期限','ご回答者','提示証跡'];
+  const ev='□証憑 □承認記録 □関連資料'; const rows=[];
+  CONFIRMATIONS.forEach(c=>c.questions.forEach((q,i)=>rows.push([c.date,c.theme,c.id,c.org,c.grade,c.flags,c.detail,'Q'+(i+1),q,'','','',i===0?ev:''])));
+  const csv='﻿'+[head,...rows].map(r=>r.map(x=>`"${String(x==null?'':x).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  dl(new Blob([csv],{type:'text/csv'}),'監査内容確認書.csv');
+}
+function downloadConfExcel(){
+  if(!CONFIRMATIONS.length){ alert('疑義案件がありません'); return; }
+  const row=(k,v)=>`<tr><td style="background:#f1f5fa;font-weight:bold;white-space:nowrap">${esc(k)}</td><td>${esc(v)}</td></tr>`;
+  let t='';
+  CONFIRMATIONS.forEach(c=>{
+    t+=`<tr><td colspan="2" style="background:#15436f;color:#fff;font-weight:bold;font-size:12pt">監査内容確認書　${esc(c.theme)}　${esc(c.id)}　［${esc(c.grade)}］</td></tr>`;
+    t+=row('確認書発行日',c.date+' ／ 発行：内部監査部');
+    t+=row('監査対象組織',c.org);
+    t+=row('対象ID',c.id);
+    t+=row('案件内容',c.detail);
+    t+=row('総合評価／指摘区分',c.grade+' ／ '+c.flags);
+    t+=`<tr><td colspan="2" style="background:#dde7f0;font-weight:bold">ご確認・ご回答いただきたい事項</td></tr>`;
+    c.questions.forEach((q,i)=>t+=`<tr><td style="vertical-align:top;width:58%">Q${i+1}. ${esc(q)}</td><td style="height:54px;background:#fffdf2">ご回答：</td></tr>`);
+    t+=`<tr><td colspan="2">提示証跡：□ 証憑　□ 承認記録　□ 関連資料</td></tr>`;
+    t+=`<tr><td>ご回答期限：　　　年　　月　　日</td><td>ご回答者（所属・氏名）：</td></tr>`;
+    t+=`<tr><td colspan="2" style="border:none;height:10px"></td></tr>`;
+  });
+  const html=`<html><head><meta charset="utf-8"><style>table{border-collapse:collapse}td{border:1px solid #b8c4d0;padding:5px 8px;font-size:10.5pt;font-family:'Meiryo UI','Yu Gothic',sans-serif;vertical-align:top}</style></head><body><table>${t}</table></body></html>`;
+  dl(new Blob(['﻿'+html],{type:'application/vnd.ms-excel'}),'監査内容確認書.xls');
+}
+
+// ===== 初期化 =====
+buildSelect();
+document.getElementById('selSet').value='';
+clearAll();
+</script>
+</body>
+</html>
