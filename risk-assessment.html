@@ -313,6 +313,20 @@ function render(){
     <div class="kpi" style="background:#990000"><div class="n">${hiN}</div><div class="l">監査候補（優先）</div></div>
   </div></div>`;
 
+  // スコアマトリクス（ヒートマップ）
+  h+=`<div class="card"><h2>🔢 スコアマトリクス（ヒートマップ）</h2><div class="tablewrap"><table>
+    <thead><tr><th>監査単位</th>${SHORT.map((s,i)=>`<th class="c" title="${esc(FACTORS[i].n)}">${i+1}</th>`).join('')}<th class="num">スコア</th></tr></thead><tbody>`;
+  rows.forEach(r=>{
+    h+=`<tr><td><b>${esc(r.name)}</b></td>${r.nums.map(v=>`<td class="c" style="background:${heatColor(v)};color:#27313c;font-weight:600">${v}</td>`).join('')}<td class="num"><b>${r.score.toFixed(2)}</b></td></tr>`;
+  });
+  h+=`</tbody></table></div>
+    <div class="legend" style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <span>リスク度（得点）:</span>
+      ${[1,2,3,4,5].map(v=>`<span style="display:inline-block;padding:2px 9px;border-radius:4px;background:${heatColor(v)};color:#27313c;font-weight:700">${v}</span>`).join('')}
+      <span>（1=低 → 5=高）</span>
+    </div>
+    <div class="legend">列番号とファクター名：${SHORT.map((s,i)=>`${i+1}=${s}`).join(' / ')}</div></div>`;
+
   // ランキング
   h+=`<div class="card"><h2>🏆 監査対象 優先順位ランキング</h2><div class="tablewrap"><table>
     <thead><tr><th class="c">順位</th><th>監査単位</th><th class="num">加重スコア</th><th class="c">優先度</th><th>主要リスク要因（寄与上位3）</th><th>推奨アクション</th></tr></thead><tbody>`;
@@ -329,20 +343,6 @@ function render(){
   });
   h+=`</tbody></table></div>
     <div class="legend">優先度しきい値：高 ≥ ${hi.toFixed(2)} ／ 中 ≥ ${RESULTS.mid.toFixed(2)}。最終的な監査候補の選定では、戦略リスク・経営/取締役会の重要認識（トップダウン）も加味します。</div></div>`;
-
-  // スコアマトリクス（ヒートマップ）
-  h+=`<div class="card"><h2>🔢 スコアマトリクス（ヒートマップ）</h2><div class="tablewrap"><table>
-    <thead><tr><th>監査単位</th>${SHORT.map((s,i)=>`<th class="c" title="${esc(FACTORS[i].n)}">${i+1}</th>`).join('')}<th class="num">スコア</th></tr></thead><tbody>`;
-  rows.forEach(r=>{
-    h+=`<tr><td><b>${esc(r.name)}</b></td>${r.nums.map(v=>`<td class="c" style="background:${heatColor(v)};color:#27313c;font-weight:600">${v}</td>`).join('')}<td class="num"><b>${r.score.toFixed(2)}</b></td></tr>`;
-  });
-  h+=`</tbody></table></div>
-    <div class="legend" style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-      <span>リスク度（得点）:</span>
-      ${[1,2,3,4,5].map(v=>`<span style="display:inline-block;padding:2px 9px;border-radius:4px;background:${heatColor(v)};color:#27313c;font-weight:700">${v}</span>`).join('')}
-      <span>（1=低 → 5=高）</span>
-    </div>
-    <div class="legend">列番号とファクター名：${SHORT.map((s,i)=>`${i+1}=${s}`).join(' / ')}</div></div>`;
 
   document.getElementById('out').innerHTML=h;
 }
