@@ -88,16 +88,6 @@
     </div>
   </details>
 
-  <div class="card">
-    <h2>⚙️ 優先度のしきい値（加重スコア／5点満点）</h2>
-    <div class="cfg">
-      <label>「高」しきい値 ≥ <input id="cfgHi" type="number" step="0.05" value="3.00"></label>
-      <label>「中」しきい値 ≥ <input id="cfgMid" type="number" step="0.05" value="2.50"></label>
-    </div>
-    <div class="legend">加重スコア＝Σ(ファクター得点 × ウエイト)。<b>高</b>＝監査候補（優先）、<b>中</b>＝監査候補（要検討）、<b>低</b>＝次年度以降で検討。<br>
-      ※ 最終選定では、スコアが低くても経営・取締役会が重要と認識するもの（戦略リスク等）は<b>トップダウンで上位選定</b>し得る（例：海外戦略拠点・人材開発）。スコアは一次優先順位の目安。</div>
-  </div>
-
   <details open>
     <summary>📚 リスクファクター定義・ウエイト（編集可・合計100%）</summary>
     <div class="card" style="margin-top:8px">
@@ -187,6 +177,12 @@ const SAMPLE = [
 ];
 
 let RESULTS = [];
+let HI=3.00, MID=2.50;  // 優先度しきい値（ランキング直上のUIで変更）
+function onThresh(){
+  const hi=parseFloat(document.getElementById('cfgHi').value); if(!isNaN(hi)) HI=hi;
+  const mid=parseFloat(document.getElementById('cfgMid').value); if(!isNaN(mid)) MID=mid;
+  if(RESULTS.rows&&RESULTS.rows.length) run();
+}
 
 function buildFactorTable(){
   SHORT=FACTORS.map(f=>f.short||f.n);
@@ -261,8 +257,7 @@ function run(){
   const wsum=weights.reduce((a,b)=>a+b,0);
   const lines=document.getElementById('input').value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
   if(!lines.length){errEl.textContent='入力データがありません。「サンプルデータ投入」を押すか、データを貼り付けてください。';document.getElementById('out').innerHTML='';return;}
-  const hi=parseFloat(document.getElementById('cfgHi').value)||3;
-  const mid=parseFloat(document.getElementById('cfgMid').value)||2.5;
+  const hi=HI, mid=MID;
   const N=FACTORS.length;
   const wfrac=weights.map(w=>w/(wsum||100));  // 合計が100%でなくても正規化して比率算出
   const rows=[]; const probs=[];
@@ -328,7 +323,13 @@ function render(){
     <div class="legend">列番号とファクター名：${SHORT.map((s,i)=>`${i+1}=${s}`).join(' / ')}</div></div>`;
 
   // ランキング
-  h+=`<div class="card"><h2>🏆 監査対象 優先順位ランキング</h2><div class="tablewrap"><table>
+  h+=`<div class="card"><h2>🏆 監査対象 優先順位ランキング</h2>
+    <div class="cfg" style="margin-bottom:8px">
+      <span style="font-weight:600;color:#15436f">⚙️ 優先度のしきい値（加重スコア／5点満点）:</span>
+      <label>「高」≥ <input id="cfgHi" type="number" step="0.05" value="${HI.toFixed(2)}" onchange="onThresh()"></label>
+      <label>「中」≥ <input id="cfgMid" type="number" step="0.05" value="${MID.toFixed(2)}" onchange="onThresh()"></label>
+    </div>
+    <div class="tablewrap"><table>
     <thead><tr><th class="c">順位</th><th>監査単位</th><th class="num">加重スコア</th><th class="c">優先度</th><th>主要リスク要因（寄与上位3）</th><th>推奨アクション</th></tr></thead><tbody>`;
   rows.forEach(r=>{
     const tops=r.top.map(t=>`${SHORT[t.i]}(${t.v})`).join('、');
@@ -342,7 +343,7 @@ function render(){
     </tr>`;
   });
   h+=`</tbody></table></div>
-    <div class="legend">優先度しきい値：高 ≥ ${hi.toFixed(2)} ／ 中 ≥ ${RESULTS.mid.toFixed(2)}。最終的な監査候補の選定では、戦略リスク・経営/取締役会の重要認識（トップダウン）も加味します。</div></div>`;
+    <div class="legend">加重スコア＝Σ(ファクター得点 × ウエイト)。<b>高</b>＝監査候補（優先）／<b>中</b>＝監査候補（要検討）／<b>低</b>＝次年度以降で検討。最終的な監査候補の選定では、スコアが低くても経営・取締役会が重要と認識するもの（戦略リスク等）は<b>トップダウンで上位選定</b>し得ます（スコアは一次優先順位の目安）。</div></div>`;
 
   document.getElementById('out').innerHTML=h;
 }
