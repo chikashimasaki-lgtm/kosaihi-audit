@@ -104,7 +104,7 @@
       <div class="note-s" id="wsumLine">ウエイト合計：<span id="wsum" class="wsum">100%</span>（100%に調整してください）</div>
       <div class="tablewrap" style="max-height:none;margin-top:8px">
         <table class="wtbl">
-          <thead><tr><th class="c">#</th><th>リスクファクター</th><th>定義</th><th class="c">ウエイト(%)</th><th>5（高）</th><th>3（中）</th><th>1（低）</th></tr></thead>
+          <thead><tr><th class="c">#</th><th>リスクファクター</th><th>定義</th><th>5（高）</th><th>3（中）</th><th>1（低）</th><th class="c">ウエイト(%)</th></tr></thead>
           <tbody id="factorBody"></tbody>
         </table>
       </div>
@@ -141,12 +141,12 @@
 
 <script>
 // ===== リスクファクター定義（演習5・6 ＝ 加重リスクファクター方式） =====
-// n:名称 / short:略称 / def:定義 / w:ウエイト(%) / c5,c3,c1:評価基準（5・3・1点）
+// n:名称 / short:略称 / def:定義 / w:ウエイト(%) / c5,c3,c1:評価基準（3段階・比率は境界が連続するように記載）
 const DEFAULT_FACTORS = [
   {n:"管理資産の全社資産に対する比率", short:"管理資産比率", w:5,  def:"その部門が管理している資産の全社資産に対する割合。",
-    c5:"20%以上", c3:"10%以上15%未満", c1:"3%未満"},
+    c5:"20%以上", c3:"3%以上20%未満", c1:"3%未満"},
   {n:"収益の全社収益に対する比率", short:"収益比率", w:10, def:"その部門が関係している収益の全社収益に対する割合。",
-    c5:"50%以上", c3:"15%以上20%未満", c1:"3%未満"},
+    c5:"50%以上", c3:"3%以上50%未満", c1:"3%未満"},
   {n:"業務目標達成のプレッシャー", short:"目標達成圧力", w:15, def:"業務目標（収益・取引件数・顧客獲得数・過誤率・経費削減・業務効率・時間外勤務等）達成のプレッシャーの程度。",
     c5:"極めて強いプレッシャーがある", c3:"目標はあるがプレッシャーは適切なレベル", c1:"目標未設定・プレッシャーなし"},
   {n:"業務の複雑さ", short:"業務の複雑さ", w:10, def:"必要な経験・スキル、取扱商品・サービスの複雑さ、上長の関与レベル等から見た業務の複雑さ・難しさ。",
@@ -162,7 +162,7 @@ const DEFAULT_FACTORS = [
   {n:"前回監査・外部監査の結果", short:"監査指摘結果", w:5, def:"前回監査・外部監査の指摘の重大性、件数。",
     c5:"重大な指摘が多数", c3:"指摘はあるが重大でない／極めて少ない", c1:"指摘なし"},
   {n:"前回監査からの年数", short:"前回監査からの年数", w:10, def:"前回監査からの経過年数。",
-    c5:"5年以上", c3:"2年以上3年未満", c1:"前年度実施"},
+    c5:"5年以上", c3:"1年以上5年未満", c1:"前年度（1年未満）"},
   {n:"ITシステムへの依存の程度", short:"IT依存度", w:5, def:"業務・プロセスのITシステムへの依存の程度。",
     c5:"きわめて高い（マニュアル対応不可）", c3:"依存しているが最低限はマニュアル対応可", c1:"ほとんど依存していない"},
   {n:"個人情報の取り扱い", short:"個人情報取扱", w:10, def:"個人情報の取り扱いの程度。",
@@ -195,10 +195,10 @@ function buildFactorTable(){
     <td class="c">${i+1}</td>
     <td>${esc(f.n)}</td>
     <td style="font-size:.72rem;color:var(--muted)">${esc(f.def||'')}</td>
-    <td class="c"><input type="number" min="0" step="1" value="${f.w}" data-i="${i}" oninput="onWeight()"></td>
     <td style="font-size:.72rem">${esc(f.c5||'')}</td>
     <td style="font-size:.72rem">${esc(f.c3||'')}</td>
     <td style="font-size:.72rem">${esc(f.c1||'')}</td>
+    <td class="c"><input type="number" min="0" step="1" value="${f.w}" data-i="${i}" oninput="onWeight()"></td>
   </tr>`).join('');
   updateInputHint();
   onWeight();
